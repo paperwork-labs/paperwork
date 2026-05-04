@@ -1,195 +1,178 @@
+# Stack audit — Q2 2026 (T3.0)
+
+**Purpose:** Read-only snapshot of repository-declared stack choices for **Master Plan Track 3** input (feeds future **T3.14** modernization decisions).  
+**Audit date:** 2026-05-04  
+**Method:** Inspected committed files only (`package.json`, `pnpm-workspace.yaml`, `pyproject.toml`, `requirements*.txt`, `render.yaml`, `.github/workflows/*.yaml`, Dockerfiles, `turbo.json`, app wiring). **No** live API calls to registries, dashboards, or vaults.
+
+**Canonical pointers (not duplicated here):** high-level agent and stack doctrine lives in [`AGENTS.md`](../AGENTS.md) and [`.cursor/rules/engineering.mdc`](../.cursor/rules/engineering.mdc) (see also root `.cursorrules` for full monorepo doctrine).
+
 ---
-last_reviewed: 2026-05-01
+
+## 1. Workspace & root tooling
+
+| Item | Value (from repo) |
+| --- | --- |
+| Package manager | `pnpm@10.33.2` (`package.json` `packageManager`) |
+| Workspaces | `apps/*`, `!apps/_archive/**`, `packages/*`, `packages/skills/*` (`pnpm-workspace.yaml`) |
+| Node engine | `>=20.9.0` (root + apps; `.node-version` = `20`) |
+| TypeScript (root devDep) | `5.7.3` (root `package.json`) |
+| Task runner | Turborepo `^2.9.8` (`turbo.json` — build/lint/type-check/test graph) |
+| Python (repo pin) | `.python-version` → **3.11** |
+| Python workspace | Root `pyproject.toml` — `uv` workspace, `members = ["apis/*", "packages/python/*"]`, `requires-python = ">=3.11"` |
+| Root `uv.lock` | **Not present** in this checkout (resolution for `uv sync` / lock discipline not verifiable from disk alone) |
+
 ---
 
-# Stack Audit - 2026 Q2
+## 2. Applications (`apps/*/package.json` — summary)
 
-**Audit date:** 2026-04-29  
-**Auditor:** Brain (autonomous read-only audit, WS-49)  
-**Source-of-truth files inspected:** `package.json`, `pnpm-workspace.yaml`, `pyproject.toml`, `requirements.txt`, `render.yaml`, `vercel.json`, `Dockerfile`, `.github/workflows/*`, `apis/brain/app/config.py`
+| Package name | Role | Notable pins (dependencies) |
+| --- | --- | --- |
+| `@paperwork-labs/filefree` | Consumer tax web | `next` `^16.2.4`, `react` `^19.2.5`, `@clerk/nextjs` `^7.3.0`, `@sentry/nextjs` `^10.51.0`, Vercel AI `ai` / `@ai-sdk/*`, `posthog-js`, `@paperwork-labs/*` workspace |
+| `@paperwork-labs/studio` | Command center / admin | Same Next/React/Clerk generation; `@neondatabase/serverless`, `@paperwork/observability`, TipTap — **no** `@sentry/nextjs` in manifest |
+| `@paperwork-labs/launchfree` | Formation web | Next 16 / React 19 / Clerk; `zod` `^4.4.2` |
+| `@paperwork-labs/distill` | B2B web | Next 16 / React 19 / Clerk (minimal dep set) |
+| `@paperwork-labs/trinkets` | Utility tools web | Next 16 / React 19 / Clerk |
+| `@paperwork-labs/accounts` | Clerk Account Portal shell (see `docs/infra/VERCEL_PROJECTS.md` for product/DNS nuance) | Next 16 / React 19 / Clerk |
+| `@paperwork-labs/axiomfolio` | Portfolio web | Next 16 / React 19 / Clerk; heavier Radix/lightweight-charts surface |
+| `@paperwork-labs/design` | Storybook design system | Storybook `^10.3.6`, Vite `^8.0.10`, **`typescript` `^6.0.3`** (intentional divergence from other apps) |
+| `@paperwork/probes` | Synthetic Playwright probes | `@playwright/test` `^1.59.1` only |
 
-## Executive Summary
+**Front-end env hooks (Turbo):** `turbo.json` build passes through `NEXT_PUBLIC_SENTRY_DSN`, PostHog keys, AxiomFolio feature flags, etc. Actual values are **vault-only**.
 
-- KEEP: 32
-- UPGRADE: 30 (S=12, M=18, L=0)
-- REPLACE: 3 (S=0, M=2, L=1)
-- Total est. effort: 80 person-days
+---
 
-Paperwork's frontend platform is ahead of most small-company stacks: React 19, Next.js 16, Tailwind 4, current Clerk, current Vercel AI SDK, and a real shared UI package are already in place. The truthful risks are lower in the UI framework layer and higher in Python/runtime consistency, package-management discipline, observability, deployment drift, and durable scheduling.
+## 3. Selected workspace packages (`packages/*`)
 
-The highest-impact upgrade candidates are:
+| Package | Notes |
+| --- | --- |
+| `@paperwork-labs/ui` | Shared shadcn/Radix layer; Tailwind ^4.x in package (see manifest) |
+| `@paperwork-labs/auth-clerk` | Canonical Clerk wrappers + JWT helpers; peers `next` `^15 \|\| ^16`, `@clerk/nextjs` `^7` |
+| `@paperwork-labs/analytics` | `posthog-js` wrapper |
+| `@paperwork-labs/data` | Zod `^4.4.2`; JSON/schema surface for reference data |
+| `@paperwork/observability` | TypeScript package (built with `tsc`); consumed by Studio — **no Sentry SDK in this manifest** |
+| `@paperwork-labs/pwa` | PWA helpers (studio) |
+| `packages/skills/*` | Domain skills packages (pnpm workspace) |
 
-- Standardize Python runtimes on 3.13 where supported, or explicitly pin services that must remain on 3.11.
-- Replace ad hoc `pip install -r requirements.txt` dependency management with `uv` lockfiles per API.
-- Finish Render repo-pointer / Blueprint sync drift for AxiomFolio services.
-- Make observability production-grade: Sentry DSNs across apps, OTel exporter, logs, alerts, and Langfuse v4.
-- Normalize Zod v4, TypeScript 6, Node LTS, and pnpm patch levels across the monorepo.
+---
 
-## Frontend
+## 4. Python backends (`apis/*`)
 
-| Layer | Current | Latest stable | Verdict | Why | Cost | Replace with |
-|---|---|---|---|---|---|---|
-| React | `19.2.5` in active Next apps; `@paperwork-labs/pwa` still peers `18.2 || 19` | `19.2.5` | KEEP | Active apps are already on current React. Keep `pwa` dual peer support for package compatibility. | S | - |
-| Next.js | `16.2.4`; App Router under `apps/*/src/app`; archived Vite tree excluded from workspace | `16.2.4` | KEEP | The active app layer is current and standardized on App Router. Pages Router usage found only in archived AxiomFolio Vite code. | S | - |
-| Next rendering mode | App Router with mixed Server/Client Components; `next dev --turbopack` in apps | App Router + Turbopack | KEEP | The repo has made the right strategic move: App Router is universal in active apps and Turbopack is used for dev. | S | - |
-| Turbopack / Webpack | Turbopack in dev scripts; production `next build` uses Next defaults | Turbopack where Next supports it | KEEP | Avoid forcing production bundler config unless a build bottleneck appears. | S | - |
-| Tailwind CSS | `tailwindcss 4.2.4`, `@tailwindcss/postcss 4.2.4`; old `tailwind.config.ts` files remain | `4.2.4` | KEEP | Version is current. Config cleanup is debt, not a stack change. | S | - |
-| shadcn/ui | Owned components in `packages/ui/src/components/*`: accordion, badge, button, card, checkbox, command, dialog, dropdown-menu, form, input, label, popover, progress, radio-group, select, separator, sheet, skeleton, switch, textarea, tooltip | shadcn copy-owned Radix pattern | KEEP | Copy-owned components are appropriate for this repo. Do not chase a package abstraction that would reduce ownership. | S | - |
-| `@paperwork-labs/ui` | `0.0.1`, framework-agnostic exports, purity CI, consumed by all active apps | Internal design system with Storybook coverage | UPGRADE | The package is real and protected, but still early: broaden Storybook coverage, publish component API docs, and keep app-specific styling out. | M | - |
-| State management | TanStack Query `5.100.5` in several apps, latest `5.100.6`; Zustand `5.0.11` / `5.0.0` in FileFree/LaunchFree | TanStack Query `5.100.6`; Zustand `5.0.11` | KEEP | The split is right: server state in Query, small client state in Zustand. Patch-level drift is too small to drive a separate workstream. | S | - |
-| Forms | `react-hook-form 7.74.0`; `@hookform/resolvers 5.2.2` | `7.74.0` | KEEP | Current, proven, and integrated with shared form components. | S | - |
-| Validation | Mixed `zod 3.24/3.25` in FileFree/Studio and `zod 4.3.6` in LaunchFree/data/filing-engine | `4.3.6` | UPGRADE | Mixed major versions increase schema sharing risk across packages. Normalize to Zod 4 after checking resolver and API schema behavior. | M | - |
-| Charts | `recharts 3.8.1`; `lightweight-charts 5.2.0` in AxiomFolio/design | `recharts 3.8.1`; `lightweight-charts 5.2.0` | KEEP | Both are current and fit the product split: Recharts for business dashboards, Lightweight Charts for trading UI. | S | - |
-| Rich text / markdown | `react-markdown 10.1.0`, `remark-gfm 4.0.1`, `rehype-sanitize 6.0.0`; no full editor found | Markdown renderers; editor only if product requires it | KEEP | Current need is safe markdown rendering, not a collaborative editor. Avoid introducing TipTap/Lexical until there is a real authoring surface. | S | - |
-| Animation | `framer-motion 12.38.0`, plus CSS/Tailwind motion helpers | `12.38.0` | KEEP | Current and aligned with brand intent. Continue centralizing motion primitives in app/package utilities. | S | - |
+| API | Layout | Runtime evidence | Dependency style |
+| --- | --- | --- | --- |
+| `apis/filefree` | `pyproject.toml` + `requirements.txt` | `requires-python ">=3.11"`; **Render `PYTHON_VERSION` `3.11.0`** in `render.yaml` | Lower bounds in `requirements.txt` (e.g. `fastapi>=0.136.1`); editable installs of `packages/python/*` |
+| `apis/brain` | `pyproject.toml` + `requirements.txt` | **Dockerfile:** `python:3.11.9-slim`; **Brain `tool.mypy`:** `python_version = "3.13"` ⚠ mismatch vs image | Lower bounds + Langfuse, LiteLLM, APScheduler, etc. |
+| `apis/axiomfolio` | `pyproject.toml` + **`requirements.txt` (pinned `==`)** | **Dockerfile:** `python:3.11-slim` | Strict pins; Celery/redis/market-data stack |
+| `apis/launchfree` | `pyproject.toml` + `requirements.txt` | Local/dev only in practice; **`launchfree-api` service commented out** in root `render.yaml` | Lower bounds + shared packages |
 
-## Backend (Python)
+---
 
-| Layer | Current | Latest stable | Verdict | Why | Cost | Replace with |
-|---|---|---|---|---|---|---|
-| Python version | Root `.python-version` is `3.11`; FileFree/Brain Dockerfiles use `3.11.9`; Brain mypy targets `3.13`; CI mixes 3.11 and 3.13 | Python `3.13.x` stable; 3.11 still supported | UPGRADE | Runtime and type-check targets disagree. Standardize on 3.13 for Brain first, then move FileFree/LaunchFree after dependency smoke tests. | M | - |
-| FastAPI | Brain `>=0.115.0`; FileFree/LaunchFree `>=0.136.1`; AxiomFolio `==0.136.1` | `0.136.1` | UPGRADE | Most services are current, but Brain's broad lower bound can install materially different behavior across environments. Pin/raise Brain to the current line. | S | - |
-| Pydantic | `>=2.13.3` or `==2.13.3`; Pydantic v2 everywhere inspected | `2.13.3` | KEEP | Correct major version and current release. | S | - |
-| SQLAlchemy | FileFree `>=2.0.36`; Brain `>=2.0.49`; AxiomFolio `==2.0.49`; LaunchFree imports SQLAlchemy but requirements omit it | `2.0.49` | UPGRADE | SQLAlchemy 2 is correct, but LaunchFree's requirements do not match code imports. Add explicit deps or remove dead DB code before provisioning. | S | - |
-| Alembic | FileFree/Brain `>=1.14.0`; AxiomFolio `==1.18.4`; LaunchFree commented deploy spec expects Alembic but requirements omit it | `1.18.4` | UPGRADE | Migration tooling is correct where live, but LaunchFree's preserved service spec and requirements are out of sync. | S | - |
-| APScheduler | Brain `apscheduler[sqlalchemy]>=3.11.0`; SQLAlchemy job store; in-process singleton on Render | `3.11.2` | UPGRADE | Fine for the current one-instance Brain service, but pin to latest patch and keep the misfire guard. | S | - |
-| HTTP client stack | Brain/FileFree use `httpx 0.28.1`; AxiomFolio also pins `requests 2.33.1` and `aiohttp 3.13.5` | `httpx 0.28.1`; `aiohttp 3.13.5`; `requests 2.33.1` | REPLACE | Three HTTP stacks increase retry, timeout, and telemetry inconsistency. Keep SDK-required `requests` only where unavoidable; use `httpx` for first-party HTTP. | M | `httpx` |
-| Pytest + plugins | FileFree `pytest>=8.3.0`, Brain `>=8.3.0`, AxiomFolio `==9.0.3`; `pytest-asyncio` ranges from `0.24.0` to `1.3.0` | `pytest 9.0.3`; `pytest-asyncio 1.3.0` | UPGRADE | Test behavior can diverge by API. Normalize versions before deeper CI triage. | S | - |
-| Ruff | Root config; Brain `>=0.15.11`; AxiomFolio `==0.15.12`; FileFree `>=0.8.0` | `0.15.12` | UPGRADE | Ruff is the right tool and nearly current, but FileFree's lower bound is stale. Align all APIs to `0.15.12`. | S | - |
-| Mypy | Root `strict=true`; Brain strict but 18 modules ignored; FileFree strict; AxiomFolio has no mypy pin/config in requirements beyond legacy Black/isort | `1.20.2` | UPGRADE | Strict mode exists, but ignore-error islands and version drift hide real type debt. Upgrade mypy and shrink ignore lists per service. | M | - |
-| Python package manager | `pip install -r requirements.txt`; no `uv.lock` / Poetry lock found | `uv` with lockfiles | REPLACE | Unlocked requirements make "latest" installs non-reproducible in production and CI. Adopt `uv` per API with committed locks and controlled upgrade batches. | M | `uv` |
-| Redis client | Brain/FileFree `redis>=5.2.0`; AxiomFolio `redis==7.4.0`; local Redis 7, Render Key Value reports Redis 8.1.4 | `redis-py 7.4.0` | UPGRADE | Client and server are acceptable, but Brain/FileFree should pin/raise client bounds and confirm `redis.asyncio` usage in async paths. | S | - |
-| Celery | AxiomFolio `celery==5.6.3`, Flower `2.0.1`, Redis broker/result backend | `5.6.3` | KEEP | Correct fit for AxiomFolio workers and heavier market-data jobs. Keep it isolated from Brain's lighter APScheduler use. | S | - |
-| OpenTelemetry | AxiomFolio pins OTel `1.41.1` plus instrumentation `0.62b1`; exporter optional by env | `1.41.1` | UPGRADE | Library versions are current, but exporter configuration is optional and therefore not a reliable production signal yet. | M | - |
+## 5. Shared Python (`packages/python/*`)
 
-## Backend (Node)
+On-disk packages (each with `pyproject.toml`): **`api-foundation`**, **`clerk-auth`**, **`data-engine`**, **`mcp-server`**, **`money`**, **`observability`** (OTel stack), **`pii-scrubber`**, **`rate-limit`**.
 
-| Layer | Current | Latest stable | Verdict | Why | Cost | Replace with |
-|---|---|---|---|---|---|---|
-| Node.js | `.node-version` is `20`; root engine `>=20.9.0`; CI uses Node 20 and 22 | Node 24 LTS | UPGRADE | Node 20 is no longer the best long-term baseline for a Next 16 stack. Move CI and local runtime to a single current LTS after Vercel compatibility check. | M | - |
-| pnpm | Root `packageManager` is `pnpm@10.32.1`; latest observed `10.33.2` | `10.33.2` | UPGRADE | Safe patch bump; keeps Corepack and lockfile-gate aligned. | S | - |
-| TypeScript | Most apps/packages `^5.6.0`; `packages/vault` `^5.9.3`; design app `^6.0.3` | `6.0.3` | UPGRADE | TS 6 is already introduced in design, but the main apps remain on 5.6. Upgrade as a coordinated monorepo batch. | M | - |
+**Doc drift:** `packages/python/README.md` “Current packages” table lists only `mcp-server` as live and names others as future — README is **behind** the tree above.
 
-## Database
+---
 
-| Layer | Current | Latest stable | Verdict | Why | Cost | Replace with |
-|---|---|---|---|---|---|---|
-| Postgres | Local dev `postgres:17-alpine`; AxiomFolio Render Postgres 18 `basic_1gb`; docs still mention Neon/Postgres 15+ for FileFree/Brain/LaunchFree | Postgres 18 | UPGRADE | Production reality is split and partly undocumented. Declare exact DB versions per service and move non-Axiom databases to Postgres 18 when provider support is verified. | M | - |
-| Connection pooling | Studio uses `@neondatabase/serverless` and falls back to `DATABASE_URL_UNPOOLED`; no explicit PgBouncer/pooler contract found | Managed pooler / serverless driver per runtime | UPGRADE | Works at current scale but is not a documented capacity plan. Define pooled vs unpooled URLs for each service before traffic spikes. | M | - |
-| ORM choice | SQLAlchemy 2 for Python APIs; `@neondatabase/serverless` direct SQL for Studio; no Drizzle found | SQLAlchemy 2 + typed SQL where needed | KEEP | SQLAlchemy is the right backend ORM. Studio's direct Neon access is narrow admin/data glue, not enough to justify Drizzle yet. | S | - |
-| Migrations | Alembic in Python APIs; AxiomFolio CI checks single head; no Drizzle migrations | Alembic for Python-owned schemas | KEEP | Alembic is the right tool for current ownership. Add a Studio migration tool only if Studio starts owning schema changes. | S | - |
-| Vector store | Brain uses pgvector for episode memory; `pgvector>=0.3.0`; SQL vector similarity in `memory.py` | `pgvector 0.4.2` | UPGRADE | The architecture is good, but the dependency lower bound is stale and should be pinned/raised with embedding regression tests. | S | - |
+## 6. Hosting & data plane (`render.yaml` — declared intent)
 
-## Infrastructure
+| Service | Type | Notes |
+| --- | --- | --- |
+| `filefree-api` | Render web (Python/pip) | `DATABASE_URL`, `REDIS_URL`, GCS/OpenAI secrets `sync: false`; Alembic pre-deploy |
+| `brain-api` | Render web (**Docker**) | Langfuse envs, Neon + Upstash REST vars, Brain secrets; mounts repo slices in image |
+| `axiomfolio-api` | Render web (**Docker**) | Postgres via Render `axiomfolio-db`; Redis via `axiomfolio-redis` Render Key Value |
+| `axiomfolio-worker` / `-worker-heavy` | Render workers | Celery queues split; **`--beat` only on fast worker** |
+| `axiomfolio-redis` | Render Key Value | Dedicated cache/queue backbone |
+| `axiomfolio-db` | Render PostgreSQL (`basic-1gb`) | **Not** Neon — separate product DB path |
+| `launchfree-api` | **Absent (comment block)** | Spec preserved; provisioning deferred |
 
-| Layer | Current | Latest stable | Verdict | Why | Cost | Replace with |
-|---|---|---|---|---|---|---|
-| Vercel | Task context says Pro confirmed; repo docs still contain Hobby quota incidents and `scripts/vercel-projects.json` maps 6 active apps plus design/accounts placeholders | Vercel Pro for team production apps | KEEP | If Pro is live, Vercel is the right frontend host. Update stale quota docs separately so operators stop optimizing around old Hobby limits. | S | - |
-| Render | Root `render.yaml`: FileFree starter, Brain starter, AxiomFolio API/worker standard, Redis starter, Postgres basic-1gb; `RENDER_INVENTORY.md` says Axiom services still point to old repo | Render services + consolidated Blueprint | UPGRADE | Render is a sound fit, but repo-pointer / Blueprint drift is a real deployment risk. Finish F-1 before treating infra as clean. | M | - |
-| Cloudflare | Work account migration completed; Brain config still supports account-wide token plus per-zone read tokens | Zone-scoped tokens, least privilege | UPGRADE | DNS ownership is now right; token posture should keep moving from broad account write to scoped operational tokens. | S | - |
-| Clerk | `@clerk/nextjs 7.2.7`; embedded auth across active apps; docs note non-Pro branding concern | Clerk Pro / current Clerk SDK | UPGRADE | SDK is current, but plan/branding is not fully settled in repo docs. Upgrade plan only when customer-facing auth polish requires it. | M | - |
-| Sentry | `@sentry/nextjs 10.50.0` only in FileFree; docs say DSN not yet integrated historically | `10.50.0` plus DSNs in every customer app | UPGRADE | Dependency is current but observability coverage is partial. Roll Sentry across customer apps with source maps and env validation. | M | - |
-| Product analytics | `posthog-js 1.372.1`; shared `@paperwork-labs/analytics`; docs name PostHog as KPI/flags platform | `posthog-js 1.372.3` | KEEP | Correct tool for product analytics and feature flags. Patch bump is trivial but not a stack verdict. | S | - |
-| LLM observability | Brain `langfuse>=2.0.0`; self-hosted Langfuse compose uses `langfuse/langfuse:latest`; latest PyPI `4.5.1` | Langfuse v4 | UPGRADE | Langfuse is the right category, but broad lower bound and `latest` Docker tag reduce reproducibility. Pin and upgrade intentionally. | M | - |
-| Log/infra observability | AxiomFolio OTel optional; no Better Stack/Datadog/Logtail dependency found; docs say Datadog/PagerDuty overkill | Central logs + alerts | UPGRADE | Current state is not production-observable enough for tax/finance workflows. Add one log drain/alerting path before scale. | M | - |
-| Hetzner / n8n / Postiz | Hetzner ops stack hosts n8n and Postiz; n8n scheduled workflows retired in favor of Brain APScheduler, webhooks/slash flows remain | Small ops VM plus Brain-owned crons | KEEP | The split is pragmatic: Brain owns cron-portable schedules, n8n remains for non-cron workflows. | S | - |
+**Vercel:** Consumer/B2C Next apps are explicitly **out of `render.yaml`** (comment header). Deploy mechanics documented under `docs/infra/VERCEL_PREBUILT.md` (prebuilt flows; often tied to **`runs-on: [self-hosted, hetzner]`**).
 
-## Build / Tooling
+---
 
-| Layer | Current | Latest stable | Verdict | Why | Cost | Replace with |
-|---|---|---|---|---|---|---|
-| Monorepo build | Turborepo `2.9.6`, pnpm workspaces, root scripts | `turbo 2.9.6` | KEEP | Current and appropriate. Keep path-filtered CI to control cost. | S | - |
-| Vite | Active production apps are Next; design Storybook uses `vite 8.0.10`; archived AxiomFolio Vite excluded | `8.0.10` | KEEP | Vite is only active as Storybook tooling, not product runtime. | S | - |
-| Storybook | `storybook 10.3.5`, `@storybook/react-vite 10.3.5`; procedural memory flags known design failure with rolldown/Storybook 10/Vite 8 | `10.3.5` | UPGRADE | Version is current but the design canvas has a known compatibility failure. Fix/pin the integration before treating design CI as trustworthy. | M | - |
-| Vitest | Main apps/packages mostly `4.1.5`; Studio still `3.2.4` | `4.1.5` | UPGRADE | Normalize Studio to Vitest 4 in the TS upgrade batch. | S | - |
-| Jest | Not found in active packages | Vitest standard | KEEP | No need to add Jest. Vitest is the repo standard. | S | - |
-| ESLint | `eslint 10.2.1`, `eslint-config-next 16.2.4` | `10.2.1` | KEEP | Current. Some app `lint` scripts are `next build`, but TS/Next CI still catches most issues. | S | - |
-| Prettier / formatting | Prettier `3.8.3` only in FileFree; Ruff format for Python; no Biome found | Prettier `3.8.3` / Ruff format | KEEP | Mixed formatter by language is acceptable. Do not introduce Biome until there is a concrete speed or config pain. | S | - |
-| CI quality gates | `ci.yaml`, `code-quality.yaml`, `brain-pre-merge-guards.yml`, `axiomfolio-ci.yml`, golden suite, lockfile gate, gitleaks | GitHub Actions with pinned critical actions | KEEP | CI is broad and improving. The main gap is path-filter blind spots, not the tool choice. | S | - |
+## 7. CI / GitHub Actions — runner usage (high level)
 
-## AI / Agent Stack
+There is **`no`** `docs/infra/HETZNER_RUNNERS.md` in this repository; runner rationale appears in workflow comments and `docs/infra/VERCEL_PREBUILT.md`, `docs/infra/GITHUB_ACTIONS_QUOTA_AUDIT_2026Q2.md`, and `infra/hetzner/README.md`.
 
-| Layer | Current | Latest stable | Verdict | Why | Cost | Replace with |
-|---|---|---|---|---|---|---|
-| Brain LLM provider abstraction | Direct OpenAI, Anthropic, and Google/Gemini calls; router fallbacks in `apis/brain/app/services/router.py` and `llm.py` | Multi-provider router with tool-call support | KEEP | Good architecture: provider abstraction exists and model-specific behavior is tested in golden suites. | S | - |
-| Vercel AI SDK | FileFree uses `ai 6.0.168`, `@ai-sdk/react 3.0.170`, `@ai-sdk/openai 3.0.53` | Same | KEEP | Current and appropriate for frontend AI streaming. Brain should remain direct-provider for backend agent control. | S | - |
-| OpenAI Python SDK | Brain/FileFree `openai>=1.57.0`; latest PyPI `2.33.0`; AxiomFolio has no OpenAI SDK pin in requirements | `2.33.0` | UPGRADE | Lower bound is old enough to hide API-shape drift. Upgrade behind Brain golden tests. | M | - |
-| Anthropic Python SDK | Brain `anthropic>=0.97.0`; latest observed `0.97.0` | `0.97.0` | KEEP | Current. | S | - |
-| Embeddings provider | OpenAI `text-embedding-3-small`, 1536 dimensions; pgvector in Postgres | Current OpenAI embeddings + pgvector | KEEP | Good cost/quality choice for Brain memory. Upgrade only if retrieval quality data says it is necessary. | S | - |
-| Vector database | Postgres pgvector, no external vector store | pgvector for current scale | KEEP | Correct for current scale and operational simplicity. Avoid Pinecone/Weaviate until Postgres retrieval is measurably insufficient. | S | - |
-| Agent memory | `agent_episodes` + hybrid vector/text retrieval in Brain | Postgres-backed hybrid memory with provenance | KEEP | Strong fit for internal agent memory and auditability. Continue improving quality, not replacing storage. | S | - |
-| MCP / tool runtime | `fastmcp>=2.6.0`, Brain MCP token, MCP server support | Current FastMCP line | UPGRADE | Confirm and pin FastMCP to an exact current version in the same Python packaging pass. | S | - |
+| Pattern | Workflows (examples) | `runs-on` |
+| --- | --- | --- |
+| Default CI | `ci.yaml` — lint, path filters, UI purity, secrets scan | `ubuntu-latest` |
+| Heavy integration | `ci.yaml` — API tests (Postgres + Redis services), comment: cost / minutes | `[self-hosted, hetzner]` |
+| Vercel prebuilt deploy | `vercel-prebuilt.yaml` | mix: `ubuntu-latest` + `[self-hosted, hetzner]` |
+| Chromatic | `chromatic.yaml` | `[self-hosted, hetzner]` |
+| Brain golden / smoke | `brain-golden-suite.yaml`, `brain-post-deploy-smoke.yml` | self-hosted / ubuntu mix |
+| AxiomFolio CI | `axiomfolio-ci.yml` | self-hosted for selected jobs |
 
-## DevOps
+**Policy inference only:** self-hosted runners are used to **reduce GitHub-hosted minute burn** and run heavier jobs; exact capacity, labels, and hardening are **operator / infra**, not fully specified in YAML.
 
-| Layer | Current | Latest stable | Verdict | Why | Cost | Replace with |
-|---|---|---|---|---|---|---|
-| GitHub Actions | 34 workflows: CI, code quality, Vercel promote, PR pipeline, Brain golden suite, medallion, docs, infra health, sprint jobs | GitHub Actions | KEEP | The workflow suite is rich and aligned with the repo's PR discipline. | S | - |
-| PR automation | Auto-merge/rebase/triage workflows, Brain PR sweep, Vercel auto-promote | GitHub + Brain orchestration | KEEP | The design is appropriate; cheap-agent PRs still require orchestrator review before merge. | S | - |
-| Cron / scheduling | Brain APScheduler in-process with SQLAlchemy job store; AxiomFolio Celery Beat; GitHub scheduled workflows for audits/golden suite | Durable scheduler for critical jobs | REPLACE | Current setup is acceptable for one Brain instance, but L5 autonomy needs durable semantics for critical jobs once missed runs or multi-instance Brain become real risks. | L | Durable workflow runner / external scheduler for critical jobs |
-| Secret management | Vercel envs, Render envs, GitHub secrets, Cloudflare tokens, Studio Vault, Brain secrets intelligence | Central inventory + rotation + drift detection | UPGRADE | The building blocks are strong, but secrets still span multiple providers. Keep consolidating registry, drift checks, and scoped tokens. | M | - |
-| Deployment model | Vercel for apps; Render for APIs/workers; Hetzner ops; root Render Blueprint plus Vercel project map | Git-driven deploys + declarative IaC | UPGRADE | The model is right, but drift remains: Render Axiom services and design/accounts Vercel placeholders are not fully closed. | M | - |
-| Workstream tracking | `apps/studio/src/data/workstreams.json`; priority unique rule; Studio workstreams board | JSON-backed tracker until Brain DB owns it | KEEP | It is good enough for sprint orchestration. Moving to DB is a product/ops feature, not a stack replacement today. | S | - |
+---
 
-## Verdict Roll-Up By Urgency
+## 8. Identity & auth surfaces
 
-### KEEP (no action - already best-in-class)
+| Surface | Evidence |
+| --- | --- |
+| Clerk (Next) | `@clerk/nextjs` + `@clerk/themes` across product apps; shared `@paperwork-labs/auth-clerk` |
+| Clerk JWT (Python) | `packages/auth-clerk/src/python` copied into Docker images (see `apis/axiomfolio/Dockerfile`); `packages/python/clerk-auth` for shared validation patterns |
+| Studio DB driver | `@neondatabase/serverless` in `apps/studio` (Serverless driver — not proof of which Neon project/env) |
 
-- React 19, Next.js 16 App Router, Turbopack dev, Tailwind 4.
-- shadcn copy-owned components and current `@paperwork-labs/ui` architecture.
-- TanStack Query + Zustand state split, React Hook Form, Recharts/Lightweight Charts, Framer Motion.
-- Pydantic v2, SQLAlchemy 2 ORM choice, Celery for AxiomFolio workers.
-- Vercel as frontend host, PostHog analytics, Hetzner/n8n split, Turborepo, Vite as design tooling only, ESLint, Prettier/Ruff formatting, GitHub Actions, Brain provider abstraction, Vercel AI SDK, Anthropic SDK, OpenAI embeddings, pgvector as current-scale vector DB, Brain memory, PR automation, workstream JSON.
+---
 
-### UPGRADE (in-place version bump or config change)
+## 9. Observability (repo-visible)
 
-| Layer | Cost | Trigger | Owner workstream |
-|---|---|---|---|
-| Python runtime standardization | M | Brain already type-checks as 3.13 while Docker/root still say 3.11 | WS-57 batch A |
-| FastAPI / SQLAlchemy / Alembic bounds | S | Mixed lower bounds and LaunchFree requirement mismatch | WS-57 batch A |
-| APScheduler patch + singleton health | S | Brain scheduler is core autonomy infrastructure | WS-57 batch A |
-| Pytest / pytest-asyncio normalization | S | Service-level test behavior drift | WS-57 batch A |
-| Ruff / mypy normalization | M | Strict configs exist but versions and ignore islands vary | WS-57 batch A |
-| Redis client normalization | S | Redis server/client versions differ by service | WS-57 batch A |
-| OpenTelemetry exporter configuration | M | AxiomFolio has OTel libraries but optional/no-op export path | WS-57 batch B |
-| Node LTS upgrade | M | `.node-version` remains 20 while Next 16 stack can move forward | WS-57 batch B |
-| pnpm patch bump | S | `10.32.1` to `10.33.2` | WS-57 batch A |
-| TypeScript 6 monorepo upgrade | M | Design already uses TS 6, apps mostly TS 5.6 | WS-57 batch B |
-| Zod 4 normalization | M | Mixed Zod 3/4 across shared schemas | WS-57 batch B |
-| `@paperwork-labs/ui` Storybook/API hardening | M | Package is real but design-system docs and examples lag | WS-57 batch B |
-| Postgres version declaration / PG18 migration plan | M | Axiom prod is PG18; local is PG17; Neon docs are imprecise | WS-57 batch C |
-| Connection pooling contract | M | No explicit pooled/unpooled production contract | WS-57 batch C |
-| pgvector lower-bound upgrade | S | Brain memory dependency lower bound is behind latest | WS-57 batch A |
-| Render Blueprint/repo-pointer drift | M | `RENDER_INVENTORY.md` says Axiom services still point to old repo | WS-57 batch C |
-| Cloudflare scoped-token cleanup | S | Work account is canonical but broad token remains in config | WS-57 batch A |
-| Clerk plan/branding decision | M | SDK current, plan/docs inconclusive | Founder decision + WS-57 batch C |
-| Sentry rollout | M | Only FileFree dependency found, DSN coverage not proven | WS-57 batch B |
-| Langfuse v4 pin/upgrade | M | Brain uses broad `>=2.0.0`, infra uses Docker `latest` | WS-57 batch B |
-| Central logs/alerts | M | OTel optional; no Better Stack/Datadog/Logtail path found | Founder decision + WS-57 batch C |
-| Storybook 10 / Vite 8 integration repair | M | Known design package incompatibility in procedural memory | WS-57 batch B |
-| Vitest 4 normalization | S | Studio remains on Vitest 3 | WS-57 batch A |
-| OpenAI Python SDK upgrade | M | Lower bound `>=1.57.0`, latest `2.33.0` | WS-57 batch B |
-| FastMCP pin/current version check | S | Broad lower bound in Brain requirements | WS-57 batch A |
-| Secrets registry/drift hardening | M | Vault exists but providers remain fragmented | WS-57 batch C |
-| Deployment placeholder cleanup | M | Design/accounts Vercel placeholders and Render drift remain | WS-57 batch C |
+| Layer | Tooling |
+| --- | --- |
+| FileFree Next | `@sentry/nextjs` + `sentry.*.config.ts` / `instrumentation.ts` |
+| Brain API | `langfuse` dependency + `LANGFUSE_*` env keys in `render.yaml` |
+| Shared Python | `packages/python/observability` — OpenTelemetry exporters + FastAPI integration |
+| AxiomFolio API | Custom OTel stack comments in `requirements.txt` (New Relic removed historically) |
+| Studio TS | `@paperwork/observability` package (implementation not expanded in this audit) |
 
-### REPLACE (swap library/service)
+**Gap:** no single “all products report to X” statement in code; Sentry is **FileFree-only** in manifests reviewed.
 
-| Layer | Replace with | Cost | Trigger | Owner workstream |
-|---|---|---|---|---|
-| Python package management via raw `pip`/requirements | `uv` + committed lockfiles per API | M | Reproducibility and upgrade safety | WS-57 batch B |
-| First-party HTTP usage split across `requests`/`aiohttp`/`httpx` | `httpx` as default first-party client | M | Timeout/retry/telemetry consistency | WS-57 batch B |
-| In-process-only critical scheduling for future L5 autonomy | Durable workflow runner or external scheduler for critical jobs only | L | Only after Brain grows beyond one scheduler instance or missed-run risk becomes unacceptable | WS-57 batch D |
+---
 
-## Founder Decisions Required
+## 10. Layer verdicts (for T3.14 planning)
 
-- Clerk plan upgrade: green-light if Clerk Pro/custom branding changes recurring spend by more than $50/mo or affects auth topology.
-- Central logs/alerting vendor: choose vendor/spend cap before adding Better Stack, Datadog, or equivalent paid log drains.
-- Durable workflow runner replacement for critical Brain jobs: approve only if we move beyond the current one-instance scheduler model or need non-reversible workflow semantics.
+| Layer | Verdict | One-line rationale | Risk | Effort | Owner suggestion |
+| --- | --- | --- | --- | --- | --- |
+| pnpm + Turborepo monorepo | **KEEP** | Mature workspace split; turbo env contract is explicit. | Workspace sprawl if apps diverge further | S | Composer fleet (hygiene) |
+| Node 20 + Next 16 + React 19 | **KEEP** | Aligned across active apps; matches current engineering target. | Upgrade churn if Framework majors diverge | S | Orchestrator for major bumps |
+| TypeScript dual tracks (5.x apps vs 6.x design) | **DEFER** | Intentional for Storybook/Vite; acceptable until convergence plan exists. | Type tooling confusion for contributors | M | Composer + design owner |
+| FileFree + shared packages on Zod 4 | **KEEP** | Consistent where adopted; validates reference data client-side. | Any remaining Zod 3 islands need migration clarity | M | Composer fleet |
+| Python 3.11 pin (`.python-version`) | **KEEP** | Matches Docker bases and Render `PYTHON_VERSION` for FileFree. | Brain `mypy` claims 3.13 without 3.13 runtime — tooling noise | S | Composer (align mypy/docker) |
+| Brain mypy `3.13` vs `python:3.11.9` image | **UPGRADE** (reconcile) | Single source of truth for language + typing should match runtime. | False confidence in CI/type checks | S | Composer |
+| uv workspace without committed `uv.lock` | **UPGRADE** | README promises lockfile discipline; absent file blocks reproducible proofs from repo alone. | Non-deterministic dependency resolution in fresh envs | M | Composer + orchestrator gate |
+| `requirements.txt` style split (ranges vs pins) | **UPGRADE** | FileFree/LaunchFree/Brain use lower bounds; AxiomFolio pins — unify policy per tier. | Accidental drift / supply-chain surprises | M | Orchestrator decides policy |
+| `packages/python/*` shared libs | **KEEP** | Correct direction vs duplicated backend logic per `.cursorrules` brain doctrines. | Package README stale vs reality | XS | Composer (docs) |
+| `render.yaml` split (web vs Docker; LaunchFree deferred) | **DEFER** | LaunchFree API consciously commented; avoids surprise billing until FE wired. | Blueprint sync could re-enable accidentally | S | Orchestrator |
+| Axiom on Render Postgres + Render Redis | **KEEP** | Coherent dedicated stack for trading domain. | Cost + backup ops outside Neon pattern | M | Infra/orchestrator |
+| FileFree/Brain Neon + Upstash hints | **KEEP** (pattern) | Industry-standard serverless pairing; refs in manifests/docs. | Secret misconfiguration yields outage | — | Vault + infra |
+| GHA self-hosted Hetzner runners | **KEEP** | Used for expensive jobs explicitly. | Runner compromise or mis-label blocks CI | L | Orchestrator + infra |
+| Clerk + `@paperwork-labs/auth-clerk` | **KEEP** | Centralized SSO story and JWT bridge to Python. | DNS / instance mis-wiring (`accounts` nuance per infra docs) | M | Composer + partnerships N/A |
+| Sentry only on FileFree | **UPGRADE** | Errors on other surfaced products lack same capture path unless elsewhere wired. | Blind spots Studio/Distill/Axiom | M | Composer fleet |
+| Langfuse on Brain | **KEEP** | LLM tracing is product-critical for orchestration. | Data residency / cost — see vault | M | CFO + orchestrator |
 
-## Methodology + Provenance
+---
 
-- Read these files: `package.json`, `pnpm-workspace.yaml`, `apps/*/package.json`, `packages/*/package.json`, `pyproject.toml`, `apis/*/pyproject.toml`, `apis/*/requirements.txt`, `render.yaml`, `apis/*/Dockerfile`, `apps/*/vercel.json`, `.github/workflows/ci.yaml`, `.github/workflows/code-quality.yaml`, `.github/workflows/vercel-promote-on-merge.yaml`, `.github/workflows/brain-pre-merge-guards.yml`, `.github/workflows/brain-golden-suite.yaml`, `.github/workflows/axiomfolio-ci.yml`, `apis/brain/app/config.py`, `infra/compose.dev.yaml`, `scripts/vercel-projects.json`, `docs/infra/RENDER_INVENTORY.md`, `docs/infra/VERCEL_PROJECTS.md`, `docs/infra/VERCEL_QUOTA_AUDIT_2026Q2.md`, `docs/runbooks/cloudflare-ownership.md`, `docs/infra/CLERK_*.md`, and related observability / infra docs found by search.
-- Queried latest stable package versions with `npm view` for frontend/tooling packages and `python -m pip index versions` for Python packages.
-- Could not access: live Vercel billing plan, live Clerk billing plan, live Render dashboard state, live Cloudflare token scopes, live Sentry/PostHog/Langfuse dashboards. Manual founder/operator review is needed for those.
-- Confidence per verdict: high for package versions and repo-local architecture; medium for provider plans, live deployment drift, and production observability because those depend on live accounts outside the repo.
+## 11. Unknown / needs vault / external confirmation
+
+The following cannot be asserted from Git alone:
+
+- **Exact resolved versions** from `pnpm-lock.yaml` / PyPI (audit used manifest ranges/pins only; lockfile not parsed here).
+- **Production secrets:** scopes and rotation state for Clerk, Neon, Upstash, GCP, OpenAI, Render, Vercel, GitHub tokens, Langfuse, Hetzner API tokens, etc.
+- **Whether `uv.lock` exists in another branch or CI artifact** — absent at repo root in this checkout.
+- **Live Sentry project configuration** (DSN, sampling, PII rules) — only `NEXT_PUBLIC_SENTRY_DSN` wiring is visible.
+- **Vercel/Render dashboard reality** vs `render.yaml` (manual env overrides, scaled plans, region drift).
+- **Self-hosted runner security baseline** (OS patch level, network isolation) — not in YAML.
+
+Record confirmations in the Studio vault / `docs/SECRETS.md` workflow per [`AGENTS.md`](../AGENTS.md); do not infer from this file.
+
+---
+
+## 12. Follow-ups suggested for T3.14 (non-binding)
+
+1. Refresh `packages/python/README.md` “Current packages” to match on-disk packages.  
+2. Align Brain Docker base Python with `tool.mypy.python_version` (pick 3.11 everywhere **or** move image to 3.13 with explicit QA).  
+3. Decide **one** Python dependency policy: pinned prod (`==`) vs bounded (`>=`) per API, document in `AGENTS.md` or `docs/infra/`.  
+4. Expand Sentry (or equivalent) beyond FileFree **or** document intentional exception per app.  
+5. Add and commit **`uv.lock`** at repo root if uv workspace is production truth (per `packages/python/README.md` claims).
