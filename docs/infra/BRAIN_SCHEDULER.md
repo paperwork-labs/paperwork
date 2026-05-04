@@ -133,6 +133,43 @@ ORDER BY id;
 - Log durable decisions in [Company Knowledge](../KNOWLEDGE.md) and update this runbook if job ids, env vars, or timezone strategy change.
 - Link the sprint tracker [Streamline + SSO + Real DAGs](../sprints/STREAMLINE_SSO_DAGS_2026Q2.md).
 
+## Post-deploy smoke (T3.7)
+
+Automated verification lives at `apis/brain/scripts/post_deploy_smoke.py`. It exercises **`GET /health`** (required), **`GET /health/deep`** (optional — 404 logs `skipped — route absent` and continues), **`GET /internal/schedulers`** (optional — missing `brain_autopilot_dispatcher` logs an informational warning only), and a **database probe** (`SELECT 1 FROM agent_dispatches LIMIT 1`, required).
+
+### Running locally
+
+From repo root (with Brain API up and `DATABASE_URL` set so SQLAlchemy can reach the same Postgres as production):
+
+```bash
+cd apis/brain
+export BRAIN_API_URL=http://localhost:8000   # optional; defaults to this without --ci
+python scripts/post_deploy_smoke.py
+```
+
+CI / production-style run (URL mandatory):
+
+```bash
+export BRAIN_API_URL=https://<brain-host>
+python apis/brain/scripts/post_deploy_smoke.py --ci
+```
+
+On failure, **`--report-conversation`** posts a Brain Conversation via **`POST /api/v1/admin/conversations`** using **`BRAIN_ADMIN_TOKEN`** as **`X-Brain-Secret`** (same value as Brain `BRAIN_API_SECRET` on Render — see [pre-deploy guard](./pre-deploy-guard.md)).
+
+### Exit codes
+
+| Code | Meaning |
+| --- | --- |
+| `0` | All required checks passed; optional checks passed or were skipped as documented |
+| `1` | At least one **required** check failed (`/health` or DB) |
+| `2` | Required checks passed but an **optional** HTTP probe failed (e.g. `/health/deep` or `/internal/schedulers` non-success) |
+
+Structured stdout: one JSON object per line per check (no PII).
+
+### Automation
+
+GitHub Actions workflow **`.github/workflows/brain-post-deploy-smoke.yml`** runs on `repository_dispatch` type **`brain-deploy-completed`** (wire Render → GitHub separately) and on **`workflow_dispatch`**. It does **not** run on pull requests and does not gate merges.
+
 ## Related
 
 - Decision log: [Company Knowledge](../KNOWLEDGE.md).
