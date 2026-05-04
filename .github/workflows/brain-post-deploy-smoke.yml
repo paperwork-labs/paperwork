@@ -1,0 +1,35 @@
+name: Brain post-deploy smoke
+
+# Non-blocking: triggered after Brain deploy (repository_dispatch) or manually.
+# Does not run on pull_request — merge gates stay unchanged.
+
+on:
+  repository_dispatch:
+    types: [brain-deploy-completed]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    name: Post-deploy smoke (Brain API)
+    runs-on: [self-hosted, hetzner]
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: apis/brain/requirements.txt
+
+      - name: Install Brain API dependencies
+        run: pip install -r apis/brain/requirements.txt
+
+      - name: Run post-deploy smoke
+        env:
+          BRAIN_API_URL: ${{ secrets.BRAIN_API_URL }}
+          BRAIN_ADMIN_TOKEN: ${{ secrets.BRAIN_ADMIN_TOKEN }}
+        run: python apis/brain/scripts/post_deploy_smoke.py --ci --report-conversation
