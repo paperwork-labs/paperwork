@@ -437,6 +437,13 @@ docs:
     tags: [brain, strategy]
     owners: [strategy]
     category: reference
+  - slug: brain-data-inventory-2026-q2
+    path: docs/audits/BRAIN_DATA_INVENTORY_2026-Q2.md
+    title: Brain Data JSON Inventory — Q2 2026
+    summary: T3.0a inventory + classification of every file in `apis/brain/data/` (reference/seed vs ops state vs snapshot vs learning data). Feeds T3.0 stack audit and T2.10 snapshot kill scope.
+    tags: []
+    owners: [engineering]
+    category: reference
   - slug: brain-deploy-recovery
     path: docs/runbooks/brain-deploy-recovery.md
     title: Brain deploy recovery (Render / Postgres / Docker)
