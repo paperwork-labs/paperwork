@@ -16,6 +16,7 @@ import {
 import { motion } from "framer-motion";
 
 import { BrainFreshnessTile } from "@/components/admin/BrainFreshnessTile";
+import { BrainSchedulersCard } from "@/components/admin/overview/BrainSchedulersCard";
 import { HqMissingCredCard } from "@/components/admin/hq/HqMissingCredCard";
 import { HqStatCard, type HqStatCardStatus } from "@/components/admin/hq/HqStatCard";
 
@@ -428,6 +429,7 @@ export default function OverviewClient({ initial }: { initial: OverviewData }) {
       </motion.div>
 
       <BrainFreshnessTile />
+      <BrainSchedulersCard />
 
       {/* Stat cards — PRs, CI, infra, products */}
       <motion.section
