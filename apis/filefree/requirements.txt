@@ -30,7 +30,7 @@ redis>=7.4.0
 pillow>=11.0.0
 httpx>=0.28.1
 slowapi>=0.1.9
-cryptography>=44.0.0
+cryptography>=47.0.0
 
 # Wave K3 — shared canonical reference data (tax brackets, federal, formation).
 # Path-based pip install. After Wave K1+K2 ships the uv workspace, this
