@@ -1,6 +1,6 @@
 ---
 owner: ea
-last_reviewed: 2026-04-27
+last_reviewed: 2026-05-03
 doc_kind: reference
 domain: personas
 status: active
@@ -9,8 +9,8 @@ status: active
 
 Organizational memory for Paperwork Labs (FileFree, LaunchFree, Distill, Trinkets). AI agents read this at session start. Update after significant decisions, learnings, or pattern discoveries.
 
-**Last Updated**: 2026-04-27
-**Version**: 10.10 (D92 — Clerk + @paperwork-labs/auth-clerk canon; D56 + D91 superseded)
+**Last Updated**: 2026-05-03
+**Version**: 10.11 (D93 — Company OS bible D64–D76 + Studio §8)
 
 ---
 
@@ -418,6 +418,44 @@ Full text in [docs/archive/KNOWLEDGE-ARCHIVE.md](archive/KNOWLEDGE-ARCHIVE.md).
 ### D92 — Federated identity: Clerk + @paperwork-labs/auth-clerk (2026-04-27)
 
 Clerk is the federated identity provider for all Paperwork Labs apps. `packages/auth/` is repurposed as `@paperwork-labs/auth-clerk` (per-app Clerk wrappers, RequireAuth/useAdmin, FastAPI `paperwork_auth` sidecar, `createClerkAppearance` factory). Auth.js v5 is NOT planned. Supersedes D56. See also [`docs/decisions/AUTH_PROVIDER_BAKEOFF_2026Q2.md`](decisions/AUTH_PROVIDER_BAKEOFF_2026Q2.md). Admin Basic Auth on Studio may persist until operator cutover; see [`docs/infra/CLERK_STUDIO.md`](docs/infra/CLERK_STUDIO.md).
+
+### D94 — Q2 2026 Master Plan + Founder Ground Truth Lock (2026-05-04)
+
+**Context:** After completing the Brain Bible Gap Audit (D93), founder asked for a single consolidated execution roadmap that subsumes the two prior locked plans (`brain_=_curated_multi-tenant_agent_os_4c44cfe9.plan.md` Waves A-L; `level_4_autonomy_+_platform_7ac343ca.plan.md` Phases A0-H + WS-41-65), the Brain-as-Company-OS strategy doc, and the Wave 1 Studio audits — all integrated through two rounds of principal-engineer review and one AI-CEO strategic review.
+
+**Decision:** [`~/.cursor/plans/paperwork_2026q2_master_plan_f9ce7c63.plan.md`](file:///Users/paperworklabs/.cursor/plans/paperwork_2026q2_master_plan_f9ce7c63.plan.md) (~71 workstreams, 5 parallel tracks, 12-14 wks honest timeline) is the canonical execution roadmap to L4 handoff + L5 brain steady state. Both source plans get SUPERSEDED headers when committed. Strategy doc §§1-7 stubs replaced with track pointers.
+
+**Founder ground truth (locked 2026-05-04, codified in plan):**
+1. All backends are Python FastAPI. TS reserved for frontends + Zod schemas mirroring Pydantic. New TS backend code requires founder approval. (Codify in `engineering.mdc` + `AGENTS.md`.)
+2. Studio Vault is single source of truth for all secrets. (Reaffirm `secrets-ops.mdc`.)
+3. All cheap-agent subagents must run in git worktrees, with rules pinned in dispatch prompt, and never push to main. (Enforced via 3 new hooks in T1.6: `enforce-worktree.sh`, `enforce-rules-attachment.sh`, `enforce-no-direct-main-push.sh`.)
+4. Hetzner-hosted self-hosted runners ARE the canonical compute layer for builds. (Policy in T3.9 + `docs/infra/HETZNER_RUNNERS.md` + failover runbook.)
+5. Composer models (composer-1.5 XS, composer-2-fast S) are the economical default for ~95% of cheap-agent dispatches. gpt-5.5 / claude-sonnet require `# justification:` line. (Update `cheap-agent-fleet.mdc` Rule #2 + warn-on-non-composer in `enforce-cheap-agent-model.sh`.)
+6. Pre-user, pre-dev = perfect time for foundational metadata (3-axis labels: `product[]`, `tenant_id`, `source_system`, `label_confidence`). Migration 017 + backfill in T2.16-T2.20.
+
+**Quantified §0.5 GTM trigger (per AI-CEO review):** Replaced ambiguous "moat audit improves" + "we'd pay" with 4 falsifiable measures (≥2 signed LOIs, ≥1 §0.3 row Red→Yellow OR ≥3 Yellow→Green/quarter, ≥90% RLS-enforced tables, ≥100 usage_meter rows/tenant/week). All 4 required before flipping internal-first → productize. See [`docs/strategy/BRAIN_AS_COMPANY_OS_AS_SERVICE_2026.md`](strategy/BRAIN_AS_COMPANY_OS_AS_SERVICE_2026.md) §0.5b.
+
+**End-to-end shippable demo gates (FOUNDER MANDATE):** No checkpoint counts as "done" until founder runs the listed demo on phone+desktop with a stranger watching. 6 demos at Spine done, 4 at L4 handoff, 3 quarterly at L5 steady state. Codifies "no half-wired stuff" mantra into acceptance gates.
+
+**Reviews integrated:**
+- [`docs/audits/Q2_MASTER_PLAN_PRINCIPAL_REVIEW_2026-05-03.md`](audits/Q2_MASTER_PLAN_PRINCIPAL_REVIEW_2026-05-03.md) (round 1, 12 findings, 5 P0 — all addressed in plan)
+- [`docs/audits/Q2_MASTER_PLAN_PRINCIPAL_REVIEW_V2_2026-05-04.md`](audits/Q2_MASTER_PLAN_PRINCIPAL_REVIEW_V2_2026-05-04.md) (round 2, 8 new findings — addressed in this commit)
+- [`docs/audits/Q2_MASTER_PLAN_AI_CEO_REVIEW_2026-05-04.md`](audits/Q2_MASTER_PLAN_AI_CEO_REVIEW_2026-05-04.md) (strategic, 5 missing items + 5 conditions — addressed in this commit)
+
+**Alternatives considered:**
+- Path A: apply all patches, ship plan + audits as one PR (CHOSEN — founder mandate "no half baked stuff")
+- Path B: ship 5 P0 patches only, defer P1/P2 to follow-up (rejected — partial integration risks losing review context)
+- Path C: skip P2, ship P0+P1 only (rejected for same reason)
+
+**Reversibility:** Doc-only commit. Reverting is `git revert` of the single PR. Plan workstream execution begins as a follow-on; no code changes in this commit beyond rule files + `apis/brain` doctrine docs.
+
+### D93 — Brain bible: Company OS decisions D64–D76 + Studio §8 (2026-05-03)
+
+**Context:** [`docs/audits/BRAIN_BIBLE_GAP_AUDIT_2026-05-03.md`](audits/BRAIN_BIBLE_GAP_AUDIT_2026-05-03.md) identified missing doctrine for internal ops (Company OS), Studio surface contract, workstream verification, and reference-knowledge ingestion. [`docs/strategy/BRAIN_AS_COMPANY_OS_AS_SERVICE_2026.md`](strategy/BRAIN_AS_COMPANY_OS_AS_SERVICE_2026.md) frames internal-first + B2B-ready spine.
+
+**Decision:** [`docs/BRAIN_ARCHITECTURE.md`](BRAIN_ARCHITECTURE.md) now includes **D64–D76** (operating modes, internal ops schema, conversations, transcripts, agent dispatch, verification, reference pipeline, dogfood, JSON→DB migration, phase/wave naming, Brain↔Studio tokens, schema/surface co-ship) and replaces **§8** with the live Studio admin/nav contract aligned to `apps/studio/src/lib/admin-navigation.tsx`. **D49** and **D54** gain explicit **Company OS** paragraphs. **D9** points to **D75** for token taxonomy. Baseline **PR [#664](https://github.com/paperwork-labs/paperwork/pull/664)** (merged, commit `e0b900c65a`) remains the reference for Reference Data Storage + Brain Gateway + MCP IP pointers — this entry extends that baseline; it does not replace it.
+
+**Reversibility:** Doc-only; reverting is a git revert of the bible commit(s).
 
 ---
 
