@@ -135,7 +135,49 @@ Everything else flows from the vault.
 
 Brain reads infrastructure secrets at runtime via `apis/brain/app/tools/vault.py`,
 calling the same Studio `/api/secrets` API. Brain also has a per-user vault
-(`brain_user_vault` table) for personal OAuth tokens and API keys.
+(`brain_user_vault` table) for personal OAuth tokens and API keys — a **runtime cache**
+scoped by Brain Postgres, separate from Studio Vault (Studio remains source of truth for
+infra/org secrets).
+
+#### `brain_user_vault` repository API (T1.4 / D61)
+
+Python surface: `apis/brain/app/repositories/brain_user_vault.py`
+
+| Function | Purpose |
+|---|---|
+| `set_secret(user_id, key, value, *, db)` | AES-256-GCM upsert under `(user_id, paperwork-labs, key)` |
+| `get_secret(user_id, key, *, db)` | Decrypt or `None` if missing |
+| `list_secrets(user_id, *, db)` | Keys + timestamps only — never ciphertext/plaintext |
+| `delete_secret(user_id, key, *, db)` | Returns whether a row was deleted |
+
+Multi-tenant boundary: every SQL filter includes `user_id` (validated UUID string); default
+org id is `paperwork-labs`. Admin tooling uses `*_for_organization(...)` helpers with an
+explicit `organization_id`.
+
+#### Encryption
+
+Same algorithm and framing as Studio `apps/studio/src/lib/crypto.ts` (**AES-256-GCM**, IV +
+ciphertext + auth tag stored as base64 strings). Key material:
+
+- Prefer **`BRAIN_USER_VAULT_ENCRYPTION_KEY`** on Brain (32-byte raw key, base64-encoded).
+- Or **`SECRETS_ENCRYPTION_KEY`** (same shape as Studio) so one key can encrypt both surfaces.
+
+If decryption/authentication fails (wrong key or corrupt row), callers get
+`VaultDecryptionError` — never a silent `None`.
+
+Schema note: rows only persist `created_at` today; `VaultEntry.updated_at` mirrors
+`created_at` until an Alembic revision adds `updated_at`.
+
+#### Admin HTTP (optional operator surface)
+
+Founder-only routes under **`X-Brain-Secret`** → `BRAIN_API_SECRET`:
+
+- `POST /api/v1/admin/brain-vault/{user_id}/{key}` — JSON body `{ "value": "...", "organization_id": "paperwork-labs" }`
+- `GET /api/v1/admin/brain-vault/{user_id}?organization_id=paperwork-labs` — keys-only JSON list
+- `DELETE /api/v1/admin/brain-vault/{user_id}/{key}?organization_id=paperwork-labs`
+
+Migration path from `vault.py`: infra secrets stay on Studio `/api/secrets`; per-user secrets
+that must live in Brain DB should flow through this repository (not the HTTP vault shim).
 
 ### Environment matrix
 

@@ -69,6 +69,8 @@ ignore = ["PTH"]
 "app/dependencies/**" = ["B008"]
 "app/dependencies.py" = ["B008"]
 "app/api/secrets.py" = ["B008"]  # FastAPI Depends() in route defaults (same pattern as routers)
+"app/api/admin_brain_user_vault.py" = ["B008", "TC001", "TC002"]
+"app/schemas/brain_user_vault.py" = ["TC003"]  # Pydantic resolves datetime at model validation time
 "tests/**" = ["E501", "ARG001", "ARG002", "TC002", "TC003"]  # test mocks deserve long URL strings, unused mock-signature args, and runtime-typed sqlalchemy/datetime imports
 
 [tool.mypy]

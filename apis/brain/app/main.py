@@ -13,6 +13,7 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
+from app.api.admin_brain_user_vault import router as admin_brain_vault_router
 from app.api.agent_sprints import router as agent_sprints_router
 from app.api.probe_results import router as probe_results_router
 from app.api.secrets import router as internal_secrets_router
@@ -215,6 +216,7 @@ app.include_router(infra_registry.router, prefix="/api/v1")
 app.include_router(brain.router, prefix="/api/v1")
 app.include_router(webhooks.router, prefix="/api/v1")
 app.include_router(admin.router, prefix="/api/v1")
+app.include_router(admin_brain_vault_router, prefix="/api/v1")
 app.include_router(stats.router, prefix="/api/v1")
 app.include_router(transcripts.router, prefix="/api/v1")
 app.include_router(epics.router, prefix="/api/v1")
