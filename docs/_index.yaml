@@ -752,6 +752,13 @@ docs:
     tags: []
     owners: [strategy]
     category: reference
+  - slug: vercel-prebuilt
+    path: docs/infra/VERCEL_PREBUILT.md
+    title: Vercel `--prebuilt` rollout completeness (T3.8)
+    summary: Read-only audit (2026-05-04) of how each app under `apps/` relates to Vercel and whether production can ship via **Build Output API** + `vercel deploy --prebuilt` (see…
+    tags: []
+    owners: [strategy]
+    category: reference
   - slug: vercel-auto-promote
     path: docs/infra/VERCEL_AUTO_PROMOTE.md
     title: Vercel auto-promote on merge
