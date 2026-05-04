@@ -18,7 +18,7 @@ packages = ["app"]
 asyncio_mode = "auto"
 testpaths = ["tests", "tests_lint"]
 markers = [
-  "no_pg_conv: opt out of the autouse pg_conv_setup fixture (test does not exercise the Conversations Postgres store, T1.0d).",
+    "no_pg_conv: opt out of the autouse pg_conv_setup fixture (tests that do not exercise the Conversations Postgres store, e.g. T1.0d / T1.3).",
 ]
 
 [tool.ruff]

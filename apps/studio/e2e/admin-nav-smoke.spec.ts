@@ -22,6 +22,11 @@ type NavSmokeItem = {
 const navItems = [
   { href: "/admin", navLabel: "Overview", heading: "Company HQ" },
   { href: "/admin/conversations", navLabel: "Conversations", heading: "Conversations" },
+  {
+    href: "/admin/transcripts",
+    navLabel: "Transcripts",
+    heading: /^Transcripts$/,
+  },
   { href: "/admin/autopilot", navLabel: "Autopilot", heading: "Autopilot" },
   { href: "/admin/brain/self-improvement", navLabel: "Self-improvement", heading: /Self-improvement/ },
   { href: "/admin/people", navLabel: "People", heading: "People" },
