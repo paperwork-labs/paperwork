@@ -1,11 +1,13 @@
 ---
-last_reviewed: 2026-04-24
+last_reviewed: 2026-05-03
 doc_kind: architecture
 domain: brain
 status: active
 ---
 
 # The Brain: Definitive Architecture v10
+
+**Doctrine baseline:** Reference Data Storage, Brain Gateway (`POST /v1/brain/invoke`), and MCP-pointer discipline for IP skills are codified in [PR #664](https://github.com/paperwork-labs/paperwork/pull/664) (merged). Company OS operating modes, internal ops schema, Studio admin surface contract, verification doctrine, and reference-knowledge pipeline are **D64–D76** (2026-05-03).
 
 - **(a) Brain’s job (one sentence).** The Brain is the **agent runtime** for Paperwork: it **routes personas**, runs the **LLM + tool loop** in `apis/brain/app/services/agent.py`, and persists **memory** and **episodes** in Neon/Postgres with **per-response provenance** (`brain://episode/…`).
 
@@ -22,7 +24,7 @@ The brain of Paperwork Labs — and eventually, everyone. A channel-agnostic AI 
 **Meta-product** (F90): Brain IS the long-term platform. FileFree ("file your taxes"), LaunchFree ("form your LLC"), axiomfolio ("manage your portfolio") are skills/capabilities within it. The AI life intelligence that FileFree was always meant to become IS the Brain. Financial services are the trust-building entry point. The product is a partner that knows your entire life — finances, routines, relationships, preferences, experiences — and gets smarter every day. Products are the hands, Brain is the mind.
 **Strategic anchors** (v10): Memory Moat (D49) — accumulated life context IS the product. Brain Fill Meter (D51) — psychology makes the moat visible and viral. Tiered Email Processing (D52) — metadata-only free tier at $0.03/mo makes the economics work at any scale. Life Intelligence System (D58) — the Brain is equally strong across all life domains, weighted by the user's own data. Contextual Intelligence Monetization (D59) — Credit Karma playbook with 5-10x the signal. Proactive Insight Delivery (D60) — five-channel system so the Brain TELLS you things.
 
-Stress-tested from 10 review lenses: Anthropic safety (Amodei), OpenAI scaling (Altman), Perplexity retrieval (Srinivas), DeepMind intelligence (Hassabis), CTO production review, Top 5 AI Leads (Karpathy/Fan/Chase/Weng/Askell), Jony Ive/Steve Jobs B2C UX, Andrew Chen Growth/Social, brain.ai competitive analysis, McKinsey strategic architecture review. 11 rounds, 228 findings, all integrated. 60 design decisions. 16 **registered** personas in the `PersonaSpec` layer (4-tier orchestration model in §12). 7-agent automated content engine for psychology-driven GTM. This is the long-form **product + systems** spec for Brain design; companion `docs/BRAIN_PERSONAS.md` and `docs/philosophy/BRAIN_PHILOSOPHY.md` cover the **registry** and **policy** (replaces the old “no supplemental docs” claim; 2026-04-24).
+Stress-tested from 10 review lenses: Anthropic safety (Amodei), OpenAI scaling (Altman), Perplexity retrieval (Srinivas), DeepMind intelligence (Hassabis), CTO production review, Top 5 AI Leads (Karpathy/Fan/Chase/Weng/Askell), Jony Ive/Steve Jobs B2C UX, Andrew Chen Growth/Social, brain.ai competitive analysis, McKinsey strategic architecture review. 11 rounds, 228 findings, all integrated. **76** numbered design decisions (D1–D76). 16 **registered** personas in the `PersonaSpec` layer (4-tier orchestration model in §12). 7-agent automated content engine for psychology-driven GTM. This is the long-form **product + systems** spec for Brain design; companion `docs/BRAIN_PERSONAS.md` and `docs/philosophy/BRAIN_PHILOSOPHY.md` cover the **registry** and **policy** (replaces the old “no supplemental docs” claim; 2026-04-24).
 
 ### Core implementation index
 
@@ -41,7 +43,7 @@ Stress-tested from 10 review lenses: Anthropic safety (Amodei), OpenAI scaling (
 
 ---
 
-## 1. Design Decisions (D1-D60)
+## 1. Design Decisions (D1–D76)
 
 ### D1. Brain API is its own Render service
 
@@ -77,7 +79,7 @@ Use the best model for each task. Never downgrade quality. Prompt caching and mo
 
 ### D9. Internal authentication
 
-`BRAIN_API_SECRET` shared between n8n and Brain API. Every `/brain/process` requires `Authorization: Bearer <secret>`. Separate from user auth.
+**Legacy — `BRAIN_API_SECRET`:** Shared between n8n and Brain API where still referenced. Every `/brain/process` requires `Authorization: Bearer <secret>`. Deprecate when remaining n8n automation is retired (see AGENTS.md). **Canonical token taxonomy and CORS — [D75](#d75-brain--studio-internal-api-contract--token-taxonomy-cors-admin-auth).**
 
 ### D10. Request idempotency
 
@@ -358,6 +360,8 @@ The moat equation: `Switching cost = Σ(accumulated memories × time × trust)`.
 
 Email-first onboarding inverts the model: passive ingestion → user amazed → wants more. One Google OAuth = years of life data. Brain Fill Meter shows accumulation. Free tier: unlimited ingestion + 10 queries/month. Personal: unlimited queries + full vault. Revenue: paying to TALK TO your own accumulated life context. Phase: core concept P1, vault encryption P2, email ingestion P7, fill meter P9.
 
+**Company OS extension (same moat logic):** For `organization_id = 'paperwork-labs'`, accumulated decisions, sprint history, transcripts, **AgentDispatch** rows, and procedural memory are **organizational** recall — switching cost vs. running the company on disconnected SaaS. This does not replace individual Memory Moat; it extends D49 to the venture's own org scope (see D64, D65).
+
 ### D50. Email Ingestion Pipeline
 
 Three-provider architecture: Gmail API (OAuth2 + Pub/Sub + history.list), Microsoft Graph (OAuth2 + webhooks + delta query), IMAP fallback (Yahoo, iCloud, ~5% of users). Gmail: 2-step fetch, 15K quota units/min, 10K emails in ~3.3 min. Microsoft: delta query returns full messages inline (better than Gmail). Google verification: restricted scope, 6-12 week CASA assessment ($540+/yr) — START IN P7. 7-phase pipeline: fetch → filter (60% killed) → fetch bodies → classify (Gemini Flash) → extract (GPT-4o-mini batch 50% off) → dedup (JWZ + entity) → store. Hybrid extraction: regex pre-extracts → LLM verifies. Top 50 sender parsers handle 80% without LLM. Email schema: parsed_emails, email_transactions, email_line_items, detected_subscriptions, vendors. Phase: P7 (Gmail + pipeline), P9 (Microsoft + IMAP + full onboarding).
@@ -439,6 +443,8 @@ Same person, multiple brain contexts. Sankalp has: (1) personal Brain (B2C app) 
 **Context switching in app:** Default is personal brain. Tap org avatar in header to switch. Or conversational: "Ask my work Brain about the deploy schedule." "Switch to our shared Brain." Brain responds with context indicator: "[Personal]" or "[Paperwork Labs]" or "[Household]".
 
 **Strategic importance:** Sankalp and Olga are the first customers of every tier — Free (personal brain), Pro (circles), Team (org brain). They exercise every feature before any external user touches it. If it works for two co-founders who share both a business and personal expenses, it works for anyone.
+
+**Beyond founder dogfood — Company OS:** The `paperwork-labs` org Brain context is not only where the founders preview consumer features; it is **production Company OS** for the venture (D64). Operational entities (Goals, Epics, Sprints, Conversations, Transcripts, dispatches, decisions, people, skills, secrets) use the schema in D65 and the Studio contract in D70 / §8. Org context is founder-primary *today* for internal ops; personal Brain remains primary for B2C product iteration until P9 context-switching UI ships. Same backend.
 
 Phase: Already supported by D12/D19 architecture. Context switching UI in P9.
 
@@ -774,6 +780,102 @@ Added to D39 Connection Roadmap as Tier 2.5 (P10, paid tier only). A Chrome Exte
 **Trinket Factory candidate:** The Chrome extension can start life as a Trinket (Phase 1.5 candidate) — a standalone "deal finder" browser extension at `tools.filefree.ai`. Standalone value (finds deals), feeds the Brain when connected. Users install it for deals; it becomes a Brain data source.
 
 Phase: Trinket v1 (Phase 1.5 candidate), Brain connector (P10, paid tier only).
+
+### D64. Brain as Company OS — operating modes on one backend
+
+Brain runs in **three modes** on the same FastAPI app, same Neon schema, same agent loop. Mode is determined by `organization_id` + `user_id` at request time.
+
+1. **Consumer Brain** (`organization_id` = per-user org / consumer tenant): the B2C life-intelligence product (D1–D63, D49 onward). Memory moat, Circles, referrals, consumer skills.
+2. **Company OS** (`organization_id = 'paperwork-labs'`): the **queryable graph of how Paperwork Labs runs** — goals, epics, sprints, tasks, decisions, conversations, transcripts, agent dispatches, people, skills, secrets. Same DB, exposed through Studio admin (`paperworklabs.com/admin/*`), mobile-first via Studio PWA. Not a second product or database. **Data model: D65. Surface contract: D70 / §8. Verification: D69, D72.**
+3. **Meta-product composition**: Brain invokes FileFree / LaunchFree / AxiomFolio / Distill via the [Brain Gateway](#brain-gateway-architecture) (D62) — F90 framing unchanged.
+
+**Founder dogfood:** Sankalp and Olga are first users of Consumer Brain (D54) **and** the only full-time users of Company OS today. Features built for Mode 2 must satisfy D69 before being treated as shipped. **Memory Moat (D49) applies to the company**: years of decisions, sprints, dispatches, and transcripts are organizational switching cost vs. scattering ops across Notion/Linear/chat.
+
+**Anti-pattern:** Building a Paperwork Labs ops feature on a third-party PM tool as source of truth when the entity describes *how we run the company* — it belongs in Brain (D65) unless an explicit exception is logged in KNOWLEDGE.md.
+
+### D65. Internal Operations Schema — Goal → Epic → Sprint → Task/PR → Decision
+
+Company OS entities live in Brain DB, scoped by `organization_id = 'paperwork-labs'`, and are intended to be exposed via `/api/v1/admin/*` as each surface matures.
+
+| Entity | Role | Primary Studio / API direction |
+|--------|------|----------------------------------|
+| **Goal** | Multi-quarter venture objective | `/admin/goals` |
+| **Epic** | Multi-week initiative; DB ids such as `epic-ws-NN-…` | `/admin/workstreams` (nav label "Epics") |
+| **Sprint** | Short execution unit; ties to `docs/sprints/*.md` + auto-close service | Epic/sprint pages — avoid orphaned tabs (D69) |
+| **Task / PR** | Atomic work; optional `pr_url` | In epic/sprint detail |
+| **Decision** | D## rows mirrored from `docs/KNOWLEDGE.md` | Decisions admin + docs |
+| **Conversation** | Founder ↔ Brain threads | `/admin/conversations` (D66) |
+| **TranscriptEpisode** | Ingested external sessions | Transcript ingest + list (D67) |
+| **AgentDispatch** | Cheap-agent Task dispatch record | `/admin/autopilot` + dispatch APIs (D68) |
+| **Employee** | People directory | `/admin/people` |
+| **Skill** | `brain_skills` registry | Architecture / future skills admin |
+| **Secret** | Vault + Brain overlay | Infrastructure + secrets surfaces |
+
+**Naming:** **`Epic`** is canonical; **workstream** (rules, locked plan, some code) is an alias — reconcile regexes and docs so `epic-ws-*` ids validate everywhere.
+
+### D66. Conversations as the founder action surface
+
+In Company OS mode, **Conversations** are the primary loop for Brain-initiated items the founder completes (EA briefings, alerts, PR digest, expenses, session bookends). They use Brain admin APIs (`POST/GET/PATCH …/admin/conversations`, thread messages, status, snooze). **Tag taxonomy** matches `.cursor/rules/ea.mdc` (e.g. `daily-briefing`, `weekly-plan`, `decision`, `pr-review`, `alert`, `session-bookend`, `weekly-audit-digest`, expense tags) — **new tags require a bible PR** to avoid sprawl.
+
+**Doctrine:** If the founder cannot action a thread on **iPhone Studio PWA** in under ~30 seconds for routine flows, the surface is broken (pairs with D69). Persona routing stays as implemented in Brain + EA rules; product behavior is specified here so it cannot live only in `.mdc`.
+
+### D67. Transcripts as knowledge
+
+**TranscriptEpisode** rows capture ingested chunks (Cursor sessions, sprint markdown, plans, voice, external threads) and link into `agent_episodes` for retrieval. **Write path** includes `POST /admin/transcripts/ingest` where implemented. **Read paths** (list/detail API + `/admin/transcripts` Studio page) are required for this decision to be "done" — write-only ingest without query is a half-wired state. **Distinct from D66:** conversations are two-way founder workflow; transcripts are ingest + recall.
+
+### D68. Agent dispatch as a first-class entity
+
+Every **cheap-agent** `Task` dispatch (allowed models per `.cursor/rules/cheap-agent-fleet.mdc`) is recorded as an **AgentDispatch** row: model tier, cost, PR link, validator notes, `preflight_consulted`, outcome / not-done summary (Rule 5). **Autopilot/dispatcher** must run from production startup (`autopilot_dispatcher.install()` wiring is part of "shipped"). JSON files under `apis/brain/data/*` for dispatch outcomes are **transitional**; D73 governs promotion to DB.
+
+Phase H self-improvement reads recent dispatches into procedural memory and weekly audit Conversations — see D35 + cheap-agent Rule 6.
+
+### D69. End-to-end verification at the workstream layer (phone + desktop)
+
+A workstream/Epic is **not shipped** until all of the following hold (PR hygiene from `.cursor/rules/production-verification.mdc` is necessary but not sufficient):
+
+1. Deployed and passing PR-level checks per `production-verification.mdc` where applicable.
+2. **Data:** New or changed entities are visible via authenticated admin APIs — no "migration only" ghost tables.
+3. **Studio:** A page exists under `apps/studio/src/app/admin/**` and is reachable from [`admin-navigation.tsx`](../apps/studio/src/lib/admin-navigation.tsx) — no orphaned tabs.
+4. **iPhone:** Founder round-trip on Studio PWA within **24h** of merge (open → act → see result).
+5. **Desktop:** Same round-trip within **24h** on desktop.
+
+**Emergency bypass:** If merged hot without verification, Sprint/Epic MUST record `shipped_unverified` (or equivalent) and open a `verification-debt` conversation — silent "done" is forbidden (workstream-level no-silent-fallback).
+
+**Auto-close:** Sprint markdown `closes_workstreams:` must not be the only closure signal; pair with an explicit verification signal (e.g. founder confirmation in-thread or `verification_completed_at` on Sprint when implemented).
+
+### D70. Studio Admin Surface Coverage Matrix
+
+**Full spec:** [§8 Studio Dashboard (admin / Company OS surface)](#8-studio-dashboard-admin--company-os-surface). Every Internal Ops entity (D65) is expected to graduate to: nav entry or justified exception, server data from Brain APIs, mobile-responsive PWA, and explicit loading/error/empty/data UI states per `.cursor/rules/no-silent-fallback.mdc`.
+
+### D71. Reference knowledge pipeline
+
+These artifact classes **must** be ingested into Brain DB / episode memory so `recall_memory` and operators can answer "what did we decide" and "which sprint touched X": (1) plan files (local `.cursor/plans/*.plan.md` — backfill + delta), (2) `docs/sprints/*.md` on merge, (3) `docs/KNOWLEDGE.md` D## additions on merge, (4) `.cursor/rules/*.mdc` on Brain image build → rules table / episodes, (5) `docs/BRAIN_ARCHITECTURE.md` sections on merge. **Ingest failures** surface in `/admin/health` + tagged `alert` if stale \>24h — no silent staleness.
+
+### D72. Founder dogfood mode (Company OS)
+
+In Mode 2 there is no larger user base than **Sankalp and Olga**. If it fails for them on phone + desktop within 24h of merge, it is not shipped (D69). Olga onboarding to Conversations is the stress test for mobile parity with desktop.
+
+### D73. JSON-file-to-Brain-DB migration doctrine
+
+**Reference data:** annual cadence, legal risk → `packages/data` JSON (this bible + Reference Data section). **Continuous ops** (dispatches, merge queue, procedural memory deltas) → Brain DB tables, not unwritten JSON. Files under `apis/brain/data/*` remain only while an active writer or a dated migration plan exists; otherwise remove references from `.mdc` rules.
+
+### D74. Phase ↔ Wave ↔ Epic naming reconciliation
+
+Bible uses **P0–P10** phases; locked Brain plan uses **Waves A–K**; backlog uses **WS-NN / epic-ws-*** ids. **Canonical operational id:** Epic pattern `epic-ws-{NN}-{kebab}` aligned with Pydantic workstream schema once regex accepts it. Maintain a mapping table in `docs/KNOWLEDGE.md` or sprint docs when phases and waves diverge — do not invent a fourth naming system in new code.
+
+### D75. Brain ↔ Studio internal API contract — token taxonomy, CORS, admin auth
+
+| Token / secret | Role |
+|----------------|------|
+| `BRAIN_API_SECRET` | Legacy n8n / adapters — deprecate with remaining n8n automation |
+| `BRAIN_INTERNAL_TOKEN` | Studio server → Brain `/api/v1/admin/*` (`brain-admin-proxy.ts`); same class of credential as EA scripting in `ea.mdc` |
+| `BRAIN_MCP_TOKEN` / vault-stored user tokens | Gateway (`POST /v1/brain/invoke`) and MCP per D61 |
+
+**CORS:** Admin JSON routes trust Studio production origin; consumer apps use their own product origins (D12). Changes to auth require updating this table and the Brain router.
+
+### D76. Schema-to-surface co-shipping
+
+An Alembic migration that introduces a **Brain-admin-facing** entity must ship in the **same PR** with: SQLAlchemy model, at least list+read admin routes, and a Studio admin page **or** an explicit deferred annotation + tracker + date. **PR template:** "I will exercise this in Studio PWA on iPhone within 24h of merge" for founder-facing surfaces. CI may add guards (schema touch without `apps/studio/src/app/admin/**`).
 
 ---
 
@@ -1453,9 +1555,33 @@ Per-request: ~9,200 tokens input (3K cached, 6.2K full), ~500-1,500 output. With
 
 ---
 
-## 8. Studio Dashboard
+## 8. Studio Dashboard (admin / Company OS surface)
 
-Pages under `/admin/brain`: Overview (health, stats, recent), Conversations (thread explorer), Memory (episode browser, entity graph), Costs (charts), Audit (request log), Approvals (Tier 2/3 queue), Keys (API key management). Build: P5 (Overview, Costs, Audit, Memory), P6 (Conversations, graph), P8 (Approvals, Keys, PWA).
+Studio at `paperworklabs.com/admin/*` is the **canonical UI for Company OS** (D64, D70). Live nav is defined in [`apps/studio/src/lib/admin-navigation.tsx`](../apps/studio/src/lib/admin-navigation.tsx) (`buildNavGroups`). Expect this list to grow; **new admin routes must appear in that nav** unless an explicit "hidden route" exception is documented in the PR.
+
+### Nav groups (current structure)
+
+| Group | Routes (labels) | Brain / ops role |
+|-------|-------------------|------------------|
+| *(top)* | `/admin` — **Overview** | Dashboard |
+| **Brain** | `/admin/conversations` — **Conversations**; `/admin/autopilot` — **Autopilot**; `/admin/brain/self-improvement` — **Self-improvement** | Founder action surface (D66); dispatch/automation (D68) |
+| **Organization** | `/admin/people` — **People**; `/admin/circles` — **Circles** | Employees + circle graph |
+| *(ungrouped)* | `/admin/workstreams` — **Epics**; `/admin/products` — **Products**; `/admin/goals` — **Goals** | Internal ops hierarchy (D65) |
+| **SYSTEMS** | `/admin/architecture` — **Architecture**; `/admin/infrastructure` — **Infrastructure**; `/admin/docs/day-0-founder-actions` — **Day-0 checklist** | Engineering systems + secrets |
+| *(ungrouped)* | `/admin/docs` — **Docs** | Documentation browser |
+| **Money** | `/admin/expenses` — **Expenses**; `/admin/vendors` — **Vendors**; `/admin/bills` — **Bills** | Finance ops |
+
+### Surface contract (D70)
+
+1. **No orphan routes:** If a React tab or feature ships, the owning `page.tsx` must be linked from nav in the same workstream unless `_archive/` or an explicit waiver.  
+2. **Live data:** Prefer Brain `/api/v1/admin/*` JSON; avoid shipping new `apps/studio/src/data/*.json` mirrors of DB-backed entities (Wave E direction: delete legacy snapshots).  
+3. **Mobile:** 375px layouts; validate critical flows on **Studio PWA** (D69).  
+4. **UX states:** Loading / error / empty / data must be explicit (no `?? 0` masking failures for user-visible counts).  
+5. **Auth:** Server-side calls use `BRAIN_INTERNAL_TOKEN` per D75; never expose secrets to the client bundle.
+
+### Relationship to consumer Brain UI
+
+§9 describes the **end-user** Brain product (chat-first consumer). §8 describes **internal** Studio admin — both may run against the same Brain API organization, but **different pages and auth**. Do not confuse `/admin/*` with consumer brain frontend routes.
 
 ---
 
