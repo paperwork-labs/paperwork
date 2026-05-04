@@ -430,6 +430,13 @@ docs:
     tags: []
     owners: [strategy]
     category: reference
+  - slug: bible-d64-d76-verification-2026-05-04
+    path: docs/audits/BIBLE_D64_D76_VERIFICATION_2026-05-04.md
+    title: Brain Bible D64–D76 Verification (2026-05-04)
+    summary: "T1.1 cheap-agent verification of which D64–D76 patches landed in BRAIN_ARCHITECTURE.md per the 2026-05-03 gap audit. Lists PATCHED-in-this-PR vs PRESENT vs DEFERRED per Dxx with rationale."
+    tags: []
+    owners: [engineering]
+    category: reference
   - slug: brain-as-company-os-as-service-2026
     path: docs/strategy/BRAIN_AS_COMPANY_OS_AS_SERVICE_2026.md
     title: Brain as Company OS as a Service — Strategic + Architectural Audit
