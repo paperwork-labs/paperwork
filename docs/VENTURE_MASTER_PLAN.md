@@ -1717,7 +1717,7 @@ This is an AI-powered data pipeline that populates, validates, and keeps fresh A
 
 ### Data Structures
 
-> Canonical reference data lives in git as JSON, not Postgres. See [BRAIN_ARCHITECTURE.md](BRAIN_ARCHITECTURE.md#reference-data-storage-doctrine) → Reference Data Storage Doctrine for the full rationale (legal audit trail, rollback, perf, multi-language consumption via `packages/python/data-engine` Wave K3) and [packages/data/README.md](../packages/data/README.md) for contributor workflow. Do not duplicate this data inside any backend's `tax-data/` directory — that pattern is being deleted in Wave K3.
+> Canonical reference data lives in git as JSON, not Postgres. See [BRAIN_ARCHITECTURE.md](BRAIN_ARCHITECTURE.md#reference-data-storage-doctrine) → Reference Data Storage Doctrine for the full rationale (legal audit trail, rollback, perf, multi-language consumption via `packages/python/data-engine` Wave K3) and [packages/data/README.md](../packages/data/README.md) for contributor workflow. Do not duplicate this data inside any backend's `tax-data/` directory — that pattern was removed in Wave K3 (see [docs/audits/WAVE_K3_TAX_DATA_DEDUP_STATUS_2026-Q2.md](audits/WAVE_K3_TAX_DATA_DEDUP_STATUS_2026-Q2.md)).
 
 **Formation Data** (`packages/data/states/formation/{STATE}.json`):
 
