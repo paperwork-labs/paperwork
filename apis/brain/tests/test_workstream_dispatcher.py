@@ -171,6 +171,70 @@ async def test_load_epics_from_db_maps_active_and_in_progress(
     assert len(set(prios)) == len(prios)
 
 
+def test_normalize_workstream_id_handles_prod_shapes() -> None:
+    """Wave 0 unit-level coverage for the workstream id normalizer."""
+    from app.services.workstreams_loader import _normalize_workstream_id
+
+    assert _normalize_workstream_id("epic-ws-82-studio-hq") == "WS-82-studio-hq"
+    assert _normalize_workstream_id("WS-69-pr-j") == "WS-69-pr-j"
+    assert _normalize_workstream_id("ws-100-some-thing") == "WS-100-some-thing"
+    assert _normalize_workstream_id("epic-ws_82_studio_hq") == "WS-82-studio-hq"
+    assert _normalize_workstream_id("totally-other-epic").startswith("WS-99-")
+    assert _normalize_workstream_id("") == "WS-99-epic"
+
+
+def test_normalize_brief_tag_coerces_bare_and_prefixed() -> None:
+    from app.services.workstreams_loader import _normalize_brief_tag
+
+    assert _normalize_brief_tag("studio") == "track:studio"
+    assert _normalize_brief_tag("track:studio") == "track:studio"
+    assert _normalize_brief_tag("Studio HQ") == "track:studio-hq"
+    assert _normalize_brief_tag("") == "track:general"
+    assert _normalize_brief_tag(None) == "track:general"
+    assert _normalize_brief_tag(42) == "track:general"
+
+
+@pytest.mark.asyncio
+async def test_load_epics_from_db_normalizes_prod_shaped_ids_and_brief_tags(
+    db_session: AsyncSession,
+) -> None:
+    """Wave 0 regression: prod DB has ``epic-ws-82-studio-hq`` ids and bare
+    ``studio`` brief_tags; loader must coerce both to the legacy schema instead
+    of crashing the dispatcher loop with a Pydantic validation error.
+    """
+    db_session.add_all(
+        [
+            Epic(
+                id="epic-ws-82-studio-hq",
+                title="WS-82 Studio HQ Complete Overhaul",
+                owner_employee_slug="brain",
+                status="in_progress",
+                priority=10,
+                percent_done=70,
+                brief_tag="studio",
+            ),
+            Epic(
+                id="epic-something-non-ws",
+                title="Edge case: non WS-NN epic id",
+                owner_employee_slug="brain",
+                status="active",
+                priority=20,
+                percent_done=0,
+                brief_tag="track:already-prefixed",
+            ),
+        ]
+    )
+    await db_session.flush()
+
+    file = await load_epics_from_db(db_session)
+    by_id = {w.id: w for w in file.workstreams}
+    assert "WS-82-studio-hq" in by_id, "epic-ws-82-studio-hq must normalize to WS-82-studio-hq"
+    assert by_id["WS-82-studio-hq"].brief_tag == "track:studio"
+    catchall = next((w for w in file.workstreams if w.id.startswith("WS-99-")), None)
+    assert catchall is not None, "non-WS epic ids fall into the WS-99 catch-all bucket"
+    assert catchall.brief_tag == "track:already-prefixed"
+
+
 @pytest.mark.asyncio
 async def test_run_dispatcher_skips_if_scheduler_disabled(
     monkeypatch: pytest.MonkeyPatch,

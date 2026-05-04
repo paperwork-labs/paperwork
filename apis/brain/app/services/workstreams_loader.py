@@ -25,6 +25,12 @@ from app.schemas.workstream import Workstream, WorkstreamsFile
 _TRACK_RE = re.compile(r"^[A-Z][0-9A-Z]{0,2}$")
 _WORKSTREAMS_REL = Path("apps/studio/src/data/workstreams.json")
 
+# Matches DB epic ids like ``epic-ws-82-studio-hq``, ``ws-82-studio-hq``,
+# ``WS_82_studio_hq``, etc. Capture group 1 is the 2-3 digit number, group 2
+# is the slug remainder.
+_EPIC_WS_RE = re.compile(r"(?:epic[-_])?ws[-_]?(\d{2,3})[-_](.+)", re.IGNORECASE)
+_BRIEF_TAG_PREFIX = "track:"
+
 _cache_file: WorkstreamsFile | None = None
 _cache_at: float = 0.0
 _CACHE_TTL_SEC = 60.0
@@ -110,6 +116,35 @@ def _safe_title(raw: str, epic_id: str) -> str:
     return t[:100]
 
 
+def _normalize_workstream_id(epic_id: str) -> str:
+    """Map a DB epic id to the legacy ``WS-<NN>-<kebab-slug>`` Workstream id.
+
+    Examples:
+      ``epic-ws-82-studio-hq`` -> ``WS-82-studio-hq``
+      ``ws-69-pr-j``           -> ``WS-69-pr-j``
+      ``some-other-epic``      -> ``WS-99-some-other-epic`` (catch-all bucket)
+    """
+    raw = (epic_id or "").strip()
+    m = _EPIC_WS_RE.search(raw)
+    if m:
+        num = m.group(1)
+        slug = re.sub(r"[^a-z0-9-]+", "-", m.group(2).lower()).strip("-") or "epic"
+        return f"WS-{num}-{slug}"
+    slug = re.sub(r"[^a-z0-9-]+", "-", raw.lower()).strip("-") or "epic"
+    return f"WS-99-{slug}"
+
+
+def _normalize_brief_tag(raw: object) -> str:
+    """Ensure the brief_tag is in ``track:<kebab-slug>`` form."""
+    if isinstance(raw, str):
+        s = raw.strip()
+        tail = s[len(_BRIEF_TAG_PREFIX) :] if s.startswith(_BRIEF_TAG_PREFIX) else s
+    else:
+        tail = ""
+    slug = re.sub(r"[^a-z0-9-]+", "-", tail.lower()).strip("-") or "general"
+    return f"{_BRIEF_TAG_PREFIX}{slug}"
+
+
 def epic_to_workstream(epic: Epic, *, priority_rank: int) -> Workstream:
     """Map one ``Epic`` row to legacy ``Workstream`` shape (stable unique ``priority_rank``)."""
     md: dict[str, Any] = epic.metadata_ or {}
@@ -126,14 +161,14 @@ def epic_to_workstream(epic: Epic, *, priority_rank: int) -> Workstream:
         est_pr = 1
 
     return Workstream(
-        id=epic.id,
+        id=_normalize_workstream_id(epic.id),
         title=_safe_title(epic.title, epic.id),
         track=track,
         priority=priority_rank,
         status=_epic_status_to_workstream(epic.status),
         percent_done=epic.percent_done,
         owner=_owner_slug_to_workstream_owner(epic.owner_employee_slug),
-        brief_tag=epic.brief_tag,
+        brief_tag=_normalize_brief_tag(epic.brief_tag),
         blockers=_blockers_as_str_list(epic.blockers),
         last_pr=None,
         last_activity=_dt_activity_iso(epic.last_activity),

@@ -95,17 +95,25 @@ def upgrade() -> None:
     """
     )
 
+    # asyncpg's prepare-then-execute path rejects multi-statement strings
+    # ("cannot insert multiple commands into a prepared statement"), so each
+    # CREATE INDEX runs as its own op.execute(). All use IF NOT EXISTS so the
+    # migration is safe to re-run after a partial failure.
     op.execute(
-        """
-    CREATE INDEX IF NOT EXISTS idx_agent_dispatches_workstream_dispatched_at
-      ON agent_dispatches (workstream_id, dispatched_at DESC);
-    CREATE INDEX IF NOT EXISTS idx_agent_dispatches_t_shirt_size
-      ON agent_dispatches (t_shirt_size);
-    CREATE INDEX IF NOT EXISTS idx_agent_dispatches_outcome
-      ON agent_dispatches (outcome);
-    CREATE INDEX IF NOT EXISTS idx_agent_dispatches_dispatched_at
-      ON agent_dispatches (dispatched_at DESC);
-    """
+        "CREATE INDEX IF NOT EXISTS idx_agent_dispatches_workstream_dispatched_at "
+        "ON agent_dispatches (workstream_id, dispatched_at DESC)"
+    )
+    op.execute(
+        "CREATE INDEX IF NOT EXISTS idx_agent_dispatches_t_shirt_size "
+        "ON agent_dispatches (t_shirt_size)"
+    )
+    op.execute(
+        "CREATE INDEX IF NOT EXISTS idx_agent_dispatches_outcome "
+        "ON agent_dispatches (outcome)"
+    )
+    op.execute(
+        "CREATE INDEX IF NOT EXISTS idx_agent_dispatches_dispatched_at "
+        "ON agent_dispatches (dispatched_at DESC)"
     )
 
     _backfill_from_jsonl()
