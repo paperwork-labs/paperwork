@@ -111,4 +111,10 @@ def start_scheduler() -> AsyncIOScheduler | None:
         probe_failure_dispatcher.install(scheduler)
     except Exception:
         logger.exception("Failed to install probe_failure_dispatcher job")
+    try:
+        from app.schedulers import autopilot_dispatcher
+
+        autopilot_dispatcher.install(scheduler)
+    except Exception:
+        logger.exception("Failed to install brain_autopilot_dispatcher job")
     return scheduler
