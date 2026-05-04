@@ -25,6 +25,12 @@ from app.schemas.workstream import Workstream, WorkstreamsFile
 _TRACK_RE = re.compile(r"^[A-Z][0-9A-Z]{0,2}$")
 _WORKSTREAMS_REL = Path("apps/studio/src/data/workstreams.json")
 
+# Loose slug shape used to coerce non-conforming brief_tag values into the
+# Workstream schema's permitted shape. Schema allows bare slugs and prefixed
+# slugs; this helper just makes sure we never write whitespace/punctuation
+# garbage.
+_SLUG_SCRUB_RE = re.compile(r"[^a-z0-9-]+")
+
 _cache_file: WorkstreamsFile | None = None
 _cache_at: float = 0.0
 _CACHE_TTL_SEC = 60.0
@@ -110,6 +116,46 @@ def _safe_title(raw: str, epic_id: str) -> str:
     return t[:100]
 
 
+_WORKSTREAM_ID_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_-]{0,99}$")
+
+
+def _safe_workstream_id(epic_id: str) -> str:
+    """Return the epic id verbatim if it satisfies the schema, else a scrubbed slug.
+
+    The Workstream schema accepts both legacy ``WS-NN-...`` ids and DB-sourced
+    epic ids (``epic-ws-82-studio-hq``). This helper just guards against
+    pathological inputs (whitespace, leading digits, empty strings) so we
+    never raise ``ValidationError`` from the loader.
+    """
+    raw = (epic_id or "").strip()
+    if _WORKSTREAM_ID_RE.match(raw):
+        return raw
+    slug = _SLUG_SCRUB_RE.sub("-", raw.lower()).strip("-") or "epic"
+    return f"epic-{slug}" if not slug[:1].isalpha() else slug
+
+
+def _safe_brief_tag(raw: object) -> str:
+    """Coerce arbitrary ``epic.brief_tag`` values into a schema-valid slug.
+
+    The schema accepts bare slugs (``filefree``) and prefixed slugs
+    (``track:filefree``). We pass conforming values through unchanged and
+    scrub anything else into a bare slug.
+    """
+    if not isinstance(raw, str):
+        return "general"
+    s = raw.strip().lower()
+    if not s:
+        return "general"
+    if ":" in s:
+        prefix, _, tail = s.partition(":")
+        prefix_clean = _SLUG_SCRUB_RE.sub("-", prefix).strip("-")
+        tail_clean = _SLUG_SCRUB_RE.sub("-", tail).strip("-")
+        if prefix_clean and tail_clean:
+            return f"{prefix_clean}:{tail_clean}"
+        return tail_clean or prefix_clean or "general"
+    return _SLUG_SCRUB_RE.sub("-", s).strip("-") or "general"
+
+
 def epic_to_workstream(epic: Epic, *, priority_rank: int) -> Workstream:
     """Map one ``Epic`` row to legacy ``Workstream`` shape (stable unique ``priority_rank``)."""
     md: dict[str, Any] = epic.metadata_ or {}
@@ -126,14 +172,14 @@ def epic_to_workstream(epic: Epic, *, priority_rank: int) -> Workstream:
         est_pr = 1
 
     return Workstream(
-        id=epic.id,
+        id=_safe_workstream_id(epic.id),
         title=_safe_title(epic.title, epic.id),
         track=track,
         priority=priority_rank,
         status=_epic_status_to_workstream(epic.status),
         percent_done=epic.percent_done,
         owner=_owner_slug_to_workstream_owner(epic.owner_employee_slug),
-        brief_tag=epic.brief_tag,
+        brief_tag=_safe_brief_tag(epic.brief_tag),
         blockers=_blockers_as_str_list(epic.blockers),
         last_pr=None,
         last_activity=_dt_activity_iso(epic.last_activity),

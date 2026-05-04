@@ -25,6 +25,7 @@ from apscheduler.triggers.cron import CronTrigger
 
 from app.schedulers._history import run_with_scheduler_record
 from app.schedulers._kill_switch_guard import skip_if_brain_paused
+from app.utils.paths import brain_data_dir
 
 if TYPE_CHECKING:
     from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -42,25 +43,18 @@ _FAILURE_WINDOW_MINUTES = int(
 )
 
 
-def _repo_root() -> Path:
-    env = os.environ.get("REPO_ROOT", "").strip()
-    if env:
-        return Path(env)
-    return Path(__file__).resolve().parents[4]
-
-
 def _probe_results_path() -> Path:
     env = os.environ.get("BRAIN_PROBE_RESULTS_JSON", "").strip()
     if env:
         return Path(env)
-    return _repo_root() / "apis" / "brain" / "data" / "probe_results.json"
+    return brain_data_dir() / "probe_results.json"
 
 
 def _dispatch_queue_path() -> Path:
     env = os.environ.get("BRAIN_DISPATCH_QUEUE_JSON", "").strip()
     if env:
         return Path(env)
-    return _repo_root() / "apis" / "brain" / "data" / "dispatch_queue.json"
+    return brain_data_dir() / "dispatch_queue.json"
 
 
 # ---------------------------------------------------------------------------

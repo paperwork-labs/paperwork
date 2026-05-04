@@ -33,14 +33,24 @@ export const WorkstreamOwnerSchema = z.enum([
   "opus",
 ]);
 
-const ID_RE = /^WS-\d{2,3}-[a-z0-9-]+$/;
+// Workstream ids cover both legacy hand-curated entries (`WS-69-pr-j`) and
+// DB-sourced epic ids (`epic-ws-82-studio-hq`). Constraints kept intentionally
+// permissive — the regex is a *shape* check (no whitespace, no punctuation
+// beyond hyphen/underscore, ASCII), not a format gate. Format gating belongs
+// at the producer (this JSON file is hand-curated; DB epics use slugify).
+const ID_RE = /^[A-Za-z][A-Za-z0-9_-]{0,99}$/;
 const TRACK_RE = /^[A-Z][0-9A-Z]{0,2}$/;
-const BRIEF_TAG_RE = /^track:[a-z0-9-]+$/;
+// brief_tag matches PR titles: legacy `track:filefree` form + DB-sourced bare
+// slugs (`filefree`, `studio`). Optional `<prefix>:` segment, then slug.
+const BRIEF_TAG_RE = /^(?:[a-z][a-z0-9_-]*:)?[a-z0-9][a-z0-9_-]{0,79}$/;
 
 export const WorkstreamSchema = z.object({
   id: z
     .string()
-    .regex(ID_RE, "id must match WS-<NN>-<kebab-slug>"),
+    .regex(
+      ID_RE,
+      "id must be ASCII kebab/snake (start with a letter, max 100 chars); examples: 'WS-69-pr-j', 'epic-ws-82-studio-hq'",
+    ),
   title: z.string().min(3).max(100),
   track: z
     .string()
@@ -49,7 +59,12 @@ export const WorkstreamSchema = z.object({
   status: WorkstreamStatusSchema,
   percent_done: z.number().int().min(0).max(100),
   owner: WorkstreamOwnerSchema,
-  brief_tag: z.string().regex(BRIEF_TAG_RE, "brief_tag must be 'track:<kebab-slug>'"),
+  brief_tag: z
+    .string()
+    .regex(
+      BRIEF_TAG_RE,
+      "brief_tag must be a kebab slug, optionally prefixed (e.g. 'track:filefree' or just 'filefree')",
+    ),
   blockers: z.array(z.string().min(3)).default([]),
   last_pr: z.number().int().positive().nullable(),
   last_activity: z.string().datetime(),

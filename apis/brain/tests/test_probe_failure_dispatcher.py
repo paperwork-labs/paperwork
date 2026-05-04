@@ -244,3 +244,39 @@ def test_install_registers_job() -> None:
     assert isinstance(t, CronTrigger)
     ref = CronTrigger.from_crontab("*/15 * * * *", timezone="UTC")
     assert t.fields == ref.fields
+
+
+# -------------------------------------------------------------------
+# Path resolution (Wave 0 fix: parents[4] crashed in /app container).
+# Path helper itself is exhaustively covered in test_paths.py; here we only
+# verify the dispatcher's env-override pass-through still works.
+# -------------------------------------------------------------------
+
+
+def test_probe_results_path_env_override_wins(monkeypatch, tmp_path: Path) -> None:
+    from app.schedulers import probe_failure_dispatcher as mod
+
+    explicit = tmp_path / "custom_probe.json"
+    monkeypatch.setenv("BRAIN_PROBE_RESULTS_JSON", str(explicit))
+    assert mod._probe_results_path() == explicit
+
+
+def test_dispatch_queue_path_env_override_wins(monkeypatch, tmp_path: Path) -> None:
+    from app.schedulers import probe_failure_dispatcher as mod
+
+    explicit = tmp_path / "custom_queue.json"
+    monkeypatch.setenv("BRAIN_DISPATCH_QUEUE_JSON", str(explicit))
+    assert mod._dispatch_queue_path() == explicit
+
+
+def test_probe_results_path_default_uses_canonical_brain_data_dir(
+    monkeypatch, tmp_path: Path
+) -> None:
+    """Without ``BRAIN_PROBE_RESULTS_JSON``, path comes from ``brain_data_dir()``."""
+    from app.schedulers import probe_failure_dispatcher as mod
+
+    monkeypatch.delenv("BRAIN_PROBE_RESULTS_JSON", raising=False)
+    target = tmp_path / "brain-data"
+    target.mkdir()
+    monkeypatch.setenv("BRAIN_DATA_DIR", str(target))
+    assert mod._probe_results_path() == target / "probe_results.json"

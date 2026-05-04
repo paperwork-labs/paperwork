@@ -24,9 +24,23 @@ depends_on = None
 
 logger = logging.getLogger(__name__)
 
-_AGENT_DISPATCH_LOG_REL = (
-    Path(__file__).resolve().parents[3] / "data" / "agent_dispatch_log.json"
-)
+
+def _agent_dispatch_log_path() -> Path:
+    """Resolve ``agent_dispatch_log.json`` in both repo + container layouts.
+
+    Prefer the canonical helper from ``app.utils.paths``; fall back to a
+    layout-aware sniff so the migration can still find the file even if
+    Alembic's sys.path setup hasn't pulled ``app`` into scope yet.
+    """
+    try:
+        from app.utils.paths import brain_data_dir
+
+        return brain_data_dir() / "agent_dispatch_log.json"
+    except ImportError:
+        container_data = Path("/app/data/agent_dispatch_log.json")
+        if container_data.exists():
+            return container_data
+        return Path(__file__).resolve().parents[2] / "data" / "agent_dispatch_log.json"
 
 _MODEL_TO_SIZE: dict[str, str] = {
     "composer-1.5": "XS",
@@ -59,7 +73,7 @@ _ALL_ALLOWED_MODELS = (
 
 def upgrade() -> None:
     op.execute(
-        f"""
+        """
     CREATE TABLE IF NOT EXISTS agent_dispatches (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       organization_id TEXT NOT NULL DEFAULT 'paperwork-labs',
@@ -95,17 +109,25 @@ def upgrade() -> None:
     """
     )
 
+    # asyncpg's prepare-then-execute path rejects multi-statement strings
+    # ("cannot insert multiple commands into a prepared statement"), so each
+    # CREATE INDEX runs as its own op.execute(). All use IF NOT EXISTS so the
+    # migration is safe to re-run after a partial failure.
     op.execute(
-        """
-    CREATE INDEX IF NOT EXISTS idx_agent_dispatches_workstream_dispatched_at
-      ON agent_dispatches (workstream_id, dispatched_at DESC);
-    CREATE INDEX IF NOT EXISTS idx_agent_dispatches_t_shirt_size
-      ON agent_dispatches (t_shirt_size);
-    CREATE INDEX IF NOT EXISTS idx_agent_dispatches_outcome
-      ON agent_dispatches (outcome);
-    CREATE INDEX IF NOT EXISTS idx_agent_dispatches_dispatched_at
-      ON agent_dispatches (dispatched_at DESC);
-    """
+        "CREATE INDEX IF NOT EXISTS idx_agent_dispatches_workstream_dispatched_at "
+        "ON agent_dispatches (workstream_id, dispatched_at DESC)"
+    )
+    op.execute(
+        "CREATE INDEX IF NOT EXISTS idx_agent_dispatches_t_shirt_size "
+        "ON agent_dispatches (t_shirt_size)"
+    )
+    op.execute(
+        "CREATE INDEX IF NOT EXISTS idx_agent_dispatches_outcome "
+        "ON agent_dispatches (outcome)"
+    )
+    op.execute(
+        "CREATE INDEX IF NOT EXISTS idx_agent_dispatches_dispatched_at "
+        "ON agent_dispatches (dispatched_at DESC)"
     )
 
     _backfill_from_jsonl()
@@ -113,9 +135,12 @@ def upgrade() -> None:
 
 def _backfill_from_jsonl() -> None:
     """Read agent_dispatch_log.json and insert rows for existing entries."""
-    log_path = _AGENT_DISPATCH_LOG_REL
+    log_path = _agent_dispatch_log_path()
     if not log_path.exists():
-        logger.info("014: no agent_dispatch_log.json found, skipping backfill")
+        logger.info(
+            "014: no agent_dispatch_log.json found at %s, skipping backfill",
+            log_path,
+        )
         return
 
     try:
@@ -177,7 +202,8 @@ def _backfill_from_jsonl() -> None:
             f"'{row['dispatched_at']}'" if row["dispatched_at"] != "NOW()" else "NOW()"
         )
         pr_number_expr = str(row["pr_number"]) if row["pr_number"] is not None else "NULL"
-        est_cost = str(row["estimated_cost_cents"]) if row["estimated_cost_cents"] is not None else "NULL"
+        est_cost_raw = row["estimated_cost_cents"]
+        est_cost = str(est_cost_raw) if est_cost_raw is not None else "NULL"
 
         def _sql_str(val: str | None) -> str:
             if val is None:

@@ -11,9 +11,16 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 
 DISPATCH_COOLDOWN_MS = 4 * 60 * 60 * 1000
 
-_ID_RE = re.compile(r"^WS-\d{2,3}-[a-z0-9-]+$")
+# Workstream ids cover both legacy hand-curated entries (``WS-69-pr-j``) and
+# DB-sourced epic ids (``epic-ws-82-studio-hq``). Constraints kept intentionally
+# permissive — the regex is a *shape* check (no whitespace, no punctuation
+# beyond hyphen/underscore, ASCII), not a format gate. Format gating belongs at
+# the producer (Studio JSON file is hand-curated; DB epics use slugify on insert).
+_ID_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_-]{0,99}$")
 _TRACK_RE = re.compile(r"^[A-Z][0-9A-Z]{0,2}$")
-_BRIEF_TAG_RE = re.compile(r"^track:[a-z0-9-]+$")
+# brief_tag matches PR titles: legacy ``track:filefree`` form + DB-sourced bare
+# slugs (``filefree``, ``studio``). Optional ``<prefix>:`` segment, then slug.
+_BRIEF_TAG_RE = re.compile(r"^(?:[a-z][a-z0-9_-]*:)?[a-z0-9][a-z0-9_-]{0,79}$")
 
 WorkstreamStatus = Literal[
     "pending", "in_progress", "blocked", "completed", "cancelled", "deferred"
@@ -51,7 +58,10 @@ class Workstream(BaseModel):
     @classmethod
     def _id_shape(cls, v: str) -> str:
         if not _ID_RE.match(v):
-            raise ValueError("id must match WS-<NN>-<kebab-slug>")
+            raise ValueError(
+                "id must be ASCII kebab/snake (start with a letter, max 100 chars); "
+                "examples: 'WS-69-pr-j', 'epic-ws-82-studio-hq'"
+            )
         return v
 
     @field_validator("track")
@@ -67,7 +77,10 @@ class Workstream(BaseModel):
     @classmethod
     def _brief_tag_shape(cls, v: str) -> str:
         if not _BRIEF_TAG_RE.match(v):
-            raise ValueError("brief_tag must be 'track:<kebab-slug>'")
+            raise ValueError(
+                "brief_tag must be a kebab slug, optionally prefixed (e.g. 'track:filefree' "
+                "or just 'filefree')"
+            )
         return v
 
     @field_validator("blockers")

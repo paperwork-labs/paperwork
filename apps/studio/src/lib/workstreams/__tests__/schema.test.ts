@@ -143,4 +143,62 @@ describe("workstreams schema", () => {
     expect(content.length).toBeGreaterThan(500);
     expect(content).toMatch(/dispatch/i);
   });
+
+  it("accepts both legacy WS-NN ids and DB-sourced epic ids (Wave 0 schema relax)", () => {
+    const baseRow = {
+      title: "Sample title goes here",
+      track: "Z",
+      priority: 0,
+      status: "pending" as const,
+      percent_done: 0,
+      owner: "brain" as const,
+      blockers: [],
+      last_pr: null,
+      last_activity: "2026-04-27T00:00:00Z",
+      last_dispatched_at: null,
+      notes: "",
+      estimated_pr_count: null,
+      github_actions_workflow: null,
+      related_plan: null,
+    };
+    const file = {
+      version: 1 as const,
+      updated: "2026-04-27T00:00:00Z",
+      workstreams: [
+        { ...baseRow, id: "WS-69-pr-j", priority: 0, brief_tag: "track:filefree" },
+        { ...baseRow, id: "epic-ws-82-studio-hq", priority: 1, brief_tag: "studio" },
+        { ...baseRow, id: "Q2-tech-debt", priority: 2, brief_tag: "track:tech-debt" },
+      ],
+    };
+    const parsed = WorkstreamsFileSchema.safeParse(file);
+    if (!parsed.success) {
+      throw new Error(JSON.stringify(parsed.error.issues, null, 2));
+    }
+    expect(parsed.success).toBe(true);
+  });
+
+  it("still rejects truly invalid ids (whitespace, leading digit)", () => {
+    const baseRow = {
+      title: "Sample title goes here",
+      track: "Z",
+      priority: 0,
+      status: "pending" as const,
+      percent_done: 0,
+      owner: "brain" as const,
+      blockers: [],
+      last_pr: null,
+      last_activity: "2026-04-27T00:00:00Z",
+      last_dispatched_at: null,
+      notes: "",
+      estimated_pr_count: null,
+      github_actions_workflow: null,
+      related_plan: null,
+    };
+    const bad = {
+      version: 1 as const,
+      updated: "2026-04-27T00:00:00Z",
+      workstreams: [{ ...baseRow, id: "42-leads-with-digit", brief_tag: "track:foo" }],
+    };
+    expect(WorkstreamsFileSchema.safeParse(bad).success).toBe(false);
+  });
 });
