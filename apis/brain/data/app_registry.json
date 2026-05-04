@@ -452,35 +452,6 @@
     {
       "conformance": {
         "missing_markers": [
-          "tests/",
-          "README.md"
-        ],
-        "score": 0.3333
-      },
-      "depends_on_services": [],
-      "deploy_target": "unknown",
-      "formatter": "unknown",
-      "framework": "Node",
-      "language": "typescript",
-      "language_version": "20",
-      "last_modified": "2026-03-21T15:32:17Z",
-      "linter": "unknown",
-      "name": "document-processing",
-      "owner_persona": "unassigned",
-      "package_manager": "pnpm",
-      "path": "packages/document-processing",
-      "service_name": null,
-      "size_signals": {
-        "lines_of_code_approx": 10,
-        "py_files": 0,
-        "ts_files": 1
-      },
-      "test_runner": "unknown",
-      "type": "package"
-    },
-    {
-      "conformance": {
-        "missing_markers": [
           "README.md"
         ],
         "score": 0.6667
@@ -531,35 +502,6 @@
         "lines_of_code_approx": 487,
         "py_files": 0,
         "ts_files": 5
-      },
-      "test_runner": "unknown",
-      "type": "package"
-    },
-    {
-      "conformance": {
-        "missing_markers": [
-          "tests/",
-          "README.md"
-        ],
-        "score": 0.3333
-      },
-      "depends_on_services": [],
-      "deploy_target": "unknown",
-      "formatter": "unknown",
-      "framework": "Node",
-      "language": "typescript",
-      "language_version": "20",
-      "last_modified": "2026-03-21T15:32:17Z",
-      "linter": "unknown",
-      "name": "tax-engine",
-      "owner_persona": "unassigned",
-      "package_manager": "pnpm",
-      "path": "packages/tax-engine",
-      "service_name": null,
-      "size_signals": {
-        "lines_of_code_approx": 10,
-        "py_files": 0,
-        "ts_files": 1
       },
       "test_runner": "unknown",
       "type": "package"
@@ -651,8 +593,8 @@
     }
   ],
   "description": "All monorepo apps + their conformance status. Brain reads this for systemwide ops decisions.",
-  "generated_at": "2026-04-29T01:28:43Z",
-  "generated_by": "pwl registry-build",
+  "generated_at": "2026-05-04T07:30:00Z",
+  "generated_by": "manual edit (T1.0e — TS-backend straggler deletion); next pwl registry-build will repopulate automatically",
   "schema": "app_registry/v1",
   "version": 1
 }

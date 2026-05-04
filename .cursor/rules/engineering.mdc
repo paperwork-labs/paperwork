@@ -116,3 +116,20 @@ After implementation, invoke QA persona for review (see qa.mdc). For PII-touchin
 ## `@paperwork-labs/ui` (packages/ui) — framework-agnostic lock
 
 Shared UI **must not** import `next/*`, `next-auth`, `vite`, `@vercel/*`, Node built-ins (`node:*`, `fs`, `path`, `child_process`), or router packages (`react-router*`, `@remix-run/*`). Do not read `process.env` or use unguarded `window` in `packages/ui/src`; inject via props/context from apps. See [.cursor/rules/packages-ui.mdc](./packages-ui.mdc) and [packages/ui/README.md](../../packages/ui/README.md). CI: `node scripts/check-ui-package-purity.mjs`.
+
+## `packages/*/src/**/*.ts` — TypeScript shim policy (Founder ground truth #1)
+
+Per the Q2 2026 Master Plan founder ground truth lock (see `docs/plans/PAPERWORK_LABS_2026Q2_MASTER_PLAN.md` §"Founder ground truth (locked 2026-05-04)" item 1) and the Brain-as-OS bedrock doctrines (see `.cursorrules` "Brain-as-OS Doctrines" — "All backends are Python FastAPI"):
+
+**TypeScript under `packages/*/src/` is reserved for two purposes:**
+1. **Shared frontend libraries** — UI primitives, React hooks, Zod schemas mirroring Pydantic models, browser-safe utilities (e.g. `packages/ui`, `packages/auth-clerk`, `packages/analytics`, `packages/observability`, `packages/data`).
+2. **Browser-only assets** — PWA configs, icon generators, etc. (e.g. `packages/pwa`).
+
+**Do NOT add a TypeScript file under `packages/*/src/` that implements backend logic** (tax calculation, OCR pipeline, formation engine, MeF XML, etc.). Backends are FastAPI + Python; backend logic belongs under `apis/<product>/app/...` (or shared Python under `packages/python/...`). New TS-backend code requires explicit founder approval; assume the answer is no.
+
+**Surviving TS-backend stragglers and their disposition:**
+- `packages/tax-engine/` — **deleted in T1.0e** (Wave 0; was a 10-line `export {}` stub; tax-engine is not built in TS, it is built in Python under `apis/filefree/` per Brain bedrock).
+- `packages/document-processing/` — **deleted in T1.0e** (Wave 0; was a 10-line stub; OCR pipeline is Python in `apis/filefree/app/services/`).
+- `packages/filing-engine/` — **scheduled port to Python in T5.5** (L4-handoff blocker; 27 TS files, ~2,600 LOC currently). The State Filing Engine moves under `apis/launchfree/` + `packages/python/filing-engine/`. Do not extend the existing TS tree; new work goes into the Python target.
+
+If you find yourself wanting to add backend logic to `packages/*/src/*.ts`, stop and either (a) port the existing related TS code to Python first or (b) ask the founder for an exception with explicit business justification.
