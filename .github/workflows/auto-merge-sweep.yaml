@@ -36,9 +36,15 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
+      - uses: actions/checkout@v6
       - uses: actions/github-script@v9
         with:
           script: |
+            const path = require('path');
+            const { hasBlockingPhraseInBodyOrTitle } = require(
+              path.join(process.env.GITHUB_WORKSPACE, '.github', 'scripts', 'auto-merge-body-guard.cjs')
+            );
+
             const owner = context.repo.owner;
             const repo = context.repo.repo;
             const SELF_CHECK_NAMES = new Set([
@@ -125,6 +131,11 @@ jobs:
               );
               if (blocking.length > 0) {
                 return { action: 'skip', reason: `blocking label: ${blocking.join(',')}` };
+              }
+
+              const bodyGuard = hasBlockingPhraseInBodyOrTitle(pr);
+              if (bodyGuard.blocked) {
+                return { action: 'skip', reason: `blocking phrase in title/body: ${bodyGuard.phrase}` };
               }
 
               if (pr.mergeable === false) {
@@ -223,6 +234,11 @@ jobs:
         with:
           script: |
             const fs = require('fs');
+            const path = require('path');
+            const { hasBlockingPhraseInBodyOrTitle } = require(
+              path.join(process.env.GITHUB_WORKSPACE, '.github', 'scripts', 'auto-merge-body-guard.cjs')
+            );
+
             const owner = context.repo.owner;
             const repo = context.repo.repo;
             const MAX_LINES = 800;
@@ -367,6 +383,11 @@ jobs:
                 return { action: 'skip', reason: 'blocking label', mergedDelta: 0 };
               }
 
+              const bodyGuard = hasBlockingPhraseInBodyOrTitle(pr);
+              if (bodyGuard.blocked) {
+                return { action: 'skip', reason: `blocking phrase in title/body: ${bodyGuard.phrase}`, mergedDelta: 0 };
+              }
+
               if (pr.mergeable === false) return { action: 'skip', reason: 'conflicts', mergedDelta: 0 };
               if (pr.mergeable === null) return { action: 'skip', reason: 'mergeability computing', mergedDelta: 0 };
 
@@ -462,9 +483,15 @@ jobs:
       # Optional: comma-separated GitHub usernames (founders) allowed for this path.
       MERGE_OK_LOGINS: ${{ vars.AUTO_MERGE_FOUNDER_LOGINS }}
     steps:
+      - uses: actions/checkout@v6
       - uses: actions/github-script@v9
         with:
           script: |
+            const path = require('path');
+            const { hasBlockingPhraseInBodyOrTitle } = require(
+              path.join(process.env.GITHUB_WORKSPACE, '.github', 'scripts', 'auto-merge-body-guard.cjs')
+            );
+
             const owner = context.repo.owner;
             const repo = context.repo.repo;
             const today = new Date().toISOString().slice(0, 10);
@@ -537,6 +564,10 @@ jobs:
               }
 
               const missing = [];
+              const bodyGuard = hasBlockingPhraseInBodyOrTitle(pr);
+              if (bodyGuard.blocked) {
+                missing.push(`Title or body contains a blocking phrase: \`${bodyGuard.phrase}\` — remove it (or convert to a label) before auto-merge.`);
+              }
               if ((pr.additions || 0) > 500) {
                 missing.push(`Diff too large: ${pr.additions} additions (max 500).`);
               }
