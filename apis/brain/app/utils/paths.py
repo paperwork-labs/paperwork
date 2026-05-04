@@ -60,9 +60,7 @@ def _is_container() -> bool:
     repo the brain root is ``<repo>/apis/brain/``. We sniff for the presence
     of brain-shaped contents directly under ``/app/``.
     """
-    return (_CONTAINER_BRAIN_ROOT / "alembic").is_dir() and (
-        _CONTAINER_BRAIN_ROOT / "app"
-    ).is_dir()
+    return (_CONTAINER_BRAIN_ROOT / "alembic").is_dir() and (_CONTAINER_BRAIN_ROOT / "app").is_dir()
 
 
 def brain_root() -> Path:
