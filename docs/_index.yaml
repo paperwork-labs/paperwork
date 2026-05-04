@@ -430,6 +430,13 @@ docs:
     tags: []
     owners: [strategy]
     category: reference
+  - slug: provider-token-scopes-2026-q2
+    path: docs/audits/PROVIDER_TOKEN_SCOPES_2026-Q2.md
+    title: Provider API Token Scope Audit — Q2 2026
+    summary: "T3.1-pre preflight for the T3.1 IaC drift detector. Documents required token scopes per provider (Cloudflare, Render, Clerk, Hetzner, Neon) + verification script template at scripts/audits/verify_provider_token_scopes.sh."
+    tags: []
+    owners: [infra-ops]
+    category: reference
   - slug: brain-as-company-os-as-service-2026
     path: docs/strategy/BRAIN_AS_COMPANY_OS_AS_SERVICE_2026.md
     title: Brain as Company OS as a Service — Strategic + Architectural Audit
