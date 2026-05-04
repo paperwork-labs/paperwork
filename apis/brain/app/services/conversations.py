@@ -1,37 +1,85 @@
-"""Unified Conversations service — Brain-canonical store (WS-69 PR E).
+"""Unified Conversations service — Postgres-canonical store (T1.0d Wave 0).
 
-Persistence: JSON files at apis/brain/data/conversations/<id>.json with a
-sidecar SQLite FTS5 index at apis/brain/data/conversations.fts.db for
-full-text search over title + message bodies.
+Persistence
+-----------
+All reads and writes go through SQLAlchemy async sessions against:
+  - ``conversations``         (Alembic 012)
+  - ``conversation_messages`` (Alembic 012 + 015)
 
-Backfill: ``backfill_from_founder_actions_yaml`` reads the legacy
-apis/brain/data/founder_actions.yaml (if present) and creates corresponding
-Conversations with ``parent_action_id`` set so they link back.
+Prior JSON-file storage and the SQLite FTS sidecar are **no longer used**.
+Run the one-time backfill script before deploying this version:
+
+    python -m apis.brain.scripts.backfill_conversations_to_postgres
+
+See ``docs/runbooks/BRAIN_CONVERSATIONS_BACKFILL.md`` for the full runbook.
+
+metadata column mapping
+-----------------------
+``conversations.metadata`` JSONB stores Conversation fields without dedicated
+columns::
+
+    tags, urgency, persona, product_slug, sentiment, participants,
+    status, snooze_until (ISO-8601 string), parent_action_id, links (dict),
+    needs_founder_action, organization_id
+
+``conversation_messages.message_metadata`` JSONB stores ThreadMessage fields
+without dedicated columns::
+
+    author (ConversationParticipant dict), attachments (list), reactions (dict),
+    parent_message_id (str | None)
+
+parent_action_id decision
+-------------------------
+Stored in ``conversations.metadata["parent_action_id"]``.  Not promoted to a
+dedicated column in this migration because the primary query pattern is
+string-equality dedup; JSONB handles this adequately.  A follow-up migration
+can ADD COLUMN if queryability becomes a bottleneck.
+
+feature-flag decision
+---------------------
+``BRAIN_CONVERSATIONS_USE_POSTGRES`` flag was considered and **omitted**.  A
+flag with a JSON-file fallback would require the fallback to log ``WARNING``
+on every call (per no-silent-fallback.mdc), creating noise.  The safer gate
+is the backfill runbook itself: operators confirm Postgres row counts before
+deploy.  There is no runtime read-fallback.
+
+sync-caller compatibility
+-------------------------
+The public functions remain **synchronous** to preserve ~30 existing callers
+(schedulers, expense service, audits) without a cascading refactor.  Async DB
+work is dispatched via ``_run()``, which uses ``asyncio.run()`` when no event
+loop is running, or a thread-pool executor when called from inside an existing
+event loop (e.g. APScheduler async jobs, async FastAPI routes).  A follow-up
+workstream will migrate all callers to ``async def`` and remove the thread-pool
+path.  See docs/KNOWLEDGE.md D## (logged with this PR) for rationale.
 
 medallion: ops
 """
 
 from __future__ import annotations
 
-import json
+import asyncio
+import concurrent.futures
 import logging
-import os
-import sqlite3
-import tempfile
-import threading
+import uuid as _uuid_mod
+from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Literal
-from uuid import uuid4
+from typing import TYPE_CHECKING, Any, Literal, TypeVar
 
 import yaml
 from pydantic import ValidationError
+from sqlalchemy import func, select, text
 
+from app import database as _db_module
+from app.models.conversation_mirror import ConversationMessageRecord, ConversationRecord
 from app.schemas.conversation import (
     AppendMessageRequest,
+    Attachment,
     Conversation,
     ConversationCreate,
+    ConversationLinks,
     ConversationParticipant,
     ConversationsListPage,
     StatusLevel,
@@ -39,20 +87,28 @@ from app.schemas.conversation import (
     UrgencyLevel,
 )
 
+if TYPE_CHECKING:
+    from collections.abc import AsyncGenerator, Coroutine
+
+    from sqlalchemy.ext.asyncio import AsyncSession
+
+logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Constants / helpers shared with callers
+# ---------------------------------------------------------------------------
+
 _EXPENSE_TAG_ALLOWLIST = frozenset(
     {"expense-approval", "expense-monthly-close", "expense-rule-change"}
 )
+
+_HIGH_URGENCY: set[str] = {"high", "critical"}
 
 
 def _validate_conversation_tags(tags: list[str]) -> None:
     for t in tags:
         if t.startswith("expense-") and t not in _EXPENSE_TAG_ALLOWLIST:
             raise ValueError(f"Unknown expense-related tag: {t!r}")
-
-
-logger = logging.getLogger(__name__)
-
-_fts_lock = threading.Lock()
 
 
 def _legacy_org_id() -> str | None:
@@ -79,156 +135,6 @@ def _ensure_conversation_organization(conv: Conversation, organization_id: str |
         raise PermissionError("Conversation does not belong to this organization")
 
 
-_HIGH_URGENCY: set[str] = {"high", "critical"}
-
-# ---------------------------------------------------------------------------
-# Data-directory helpers
-# ---------------------------------------------------------------------------
-
-
-def _data_dir() -> Path:
-    """Returns apis/brain/data — three levels above this services/ file."""
-    repo_root = os.environ.get("REPO_ROOT", "").strip()
-    if repo_root:
-        return Path(repo_root) / "apis" / "brain" / "data"
-    return Path(__file__).resolve().parents[2] / "data"
-
-
-def _conversations_dir() -> Path:
-    d = _data_dir() / "conversations"
-    d.mkdir(parents=True, exist_ok=True)
-    return d
-
-
-def _conversation_path(conversation_id: str) -> Path:
-    return _conversations_dir() / f"{conversation_id}.json"
-
-
-def _fts_db_path() -> Path:
-    return _data_dir() / "conversations.fts.db"
-
-
-# ---------------------------------------------------------------------------
-# FTS helpers (SQLite FTS5 sidecar)
-# ---------------------------------------------------------------------------
-
-
-def _get_fts_conn() -> sqlite3.Connection:
-    db_path = str(_fts_db_path())
-    conn = sqlite3.connect(db_path, check_same_thread=False)
-    conn.execute("""
-        CREATE VIRTUAL TABLE IF NOT EXISTS conv_fts
-        USING fts5(
-            conversation_id UNINDEXED,
-            title,
-            body,
-            tokenize = 'porter ascii'
-        )
-    """)
-    conn.commit()
-    return conn
-
-
-def _fts_upsert(conversation_id: str, title: str, body: str) -> None:
-    with _fts_lock:
-        conn = _get_fts_conn()
-        try:
-            conn.execute(
-                "DELETE FROM conv_fts WHERE conversation_id = ?",
-                (conversation_id,),
-            )
-            conn.execute(
-                "INSERT INTO conv_fts (conversation_id, title, body) VALUES (?, ?, ?)",
-                (conversation_id, title, body),
-            )
-            conn.commit()
-        finally:
-            conn.close()
-
-
-def _fts_delete(conversation_id: str) -> None:
-    with _fts_lock:
-        conn = _get_fts_conn()
-        try:
-            conn.execute(
-                "DELETE FROM conv_fts WHERE conversation_id = ?",
-                (conversation_id,),
-            )
-            conn.commit()
-        finally:
-            conn.close()
-
-
-def _fts_search(query: str, limit: int = 20) -> list[str]:
-    """Returns list of conversation_ids matching *query* via FTS5."""
-    with _fts_lock:
-        conn = _get_fts_conn()
-        try:
-            rows = conn.execute(
-                """
-                SELECT conversation_id
-                FROM conv_fts
-                WHERE conv_fts MATCH ?
-                ORDER BY rank
-                LIMIT ?
-                """,
-                (query, limit),
-            ).fetchall()
-        except sqlite3.OperationalError:
-            return []
-        finally:
-            conn.close()
-    return [r[0] for r in rows]
-
-
-# ---------------------------------------------------------------------------
-# JSON persistence helpers
-# ---------------------------------------------------------------------------
-
-
-def _load_conversation(conversation_id: str) -> Conversation | None:
-    path = _conversation_path(conversation_id)
-    if not path.exists():
-        return None
-    try:
-        raw = path.read_text(encoding="utf-8")
-        data = json.loads(raw)
-        return Conversation.model_validate(data)
-    except (json.JSONDecodeError, ValidationError, OSError) as exc:
-        logger.error("conversations: failed to load %s: %s", conversation_id, exc)
-        return None
-
-
-def _save_conversation(conv: Conversation) -> None:
-    path = _conversation_path(conv.id)
-    tmp_dir = _conversations_dir()
-    fd, tmp_path = tempfile.mkstemp(dir=tmp_dir, suffix=".json.tmp")
-    try:
-        with os.fdopen(fd, "w", encoding="utf-8") as fh:
-            json.dump(conv.model_dump(mode="json"), fh, ensure_ascii=False, indent=2)
-        os.replace(tmp_path, path)
-    except Exception:
-        import contextlib
-
-        with contextlib.suppress(OSError):
-            os.unlink(tmp_path)
-        raise
-
-    # Keep FTS index in sync
-    body_parts = [m.body_md for m in conv.messages]
-    _fts_upsert(conv.id, conv.title, " ".join(body_parts))
-
-
-def _list_all_ids() -> list[str]:
-    d = _conversations_dir()
-    return [p.stem for p in sorted(d.glob("*.json"), key=lambda p: p.stat().st_mtime, reverse=True)]
-
-
-# ---------------------------------------------------------------------------
-# Default urgency → status mapping
-# ---------------------------------------------------------------------------
-
-
 def _default_status(urgency: UrgencyLevel) -> StatusLevel:
     if urgency in _HIGH_URGENCY:
         return "needs-action"
@@ -236,22 +142,331 @@ def _default_status(urgency: UrgencyLevel) -> StatusLevel:
 
 
 # ---------------------------------------------------------------------------
-# Public API
+# Async session context manager
+# ---------------------------------------------------------------------------
+
+_T = TypeVar("_T")
+
+
+@asynccontextmanager
+async def _session() -> AsyncGenerator[AsyncSession, None]:
+    """Async context manager yielding a DB session; commits on success, rolls back on error."""
+    async with _db_module.async_session_factory() as session:
+        try:
+            yield session
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
+
+
+# ---------------------------------------------------------------------------
+# Sync-caller compatibility layer (thread-pool executor)
+# ---------------------------------------------------------------------------
+
+# Thread pool for callers that are already inside a running event loop
+# (e.g. APScheduler async jobs, FastAPI async routes calling sync services).
+# Sync callers with no event loop use asyncio.run() directly (no thread needed).
+_tp = concurrent.futures.ThreadPoolExecutor(
+    max_workers=4,
+    thread_name_prefix="conv-svc",
+)
+
+
+def _run(coro: Coroutine[Any, Any, _T]) -> _T:
+    """Execute *coro* safely from sync code, even when called inside a running event loop.
+
+    - No running loop  → ``asyncio.run()`` in the caller's thread (zero overhead).
+    - Running loop     → spawns a thread with its own event loop to avoid
+      ``RuntimeError: This event loop is already running``.
+
+    The thread-pool path blocks the calling thread until the coroutine completes.
+    For Brain's internal-tool load this is acceptable.  A follow-up workstream
+    will migrate all callers to async so this path is never triggered in
+    production.
+    """
+    try:
+        asyncio.get_running_loop()
+        # Already inside an event loop — must use a separate thread.
+        return _tp.submit(asyncio.run, coro).result()
+    except RuntimeError:
+        # No running loop — safe to call asyncio.run() directly.
+        return asyncio.run(coro)
+
+
+# ---------------------------------------------------------------------------
+# Schema conversion helpers
 # ---------------------------------------------------------------------------
 
 
-def create_conversation(
+def _conversation_to_meta(conv: Conversation) -> dict[str, Any]:
+    """Build the ``conversations.metadata`` JSONB payload from a Conversation instance."""
+    return {
+        "tags": conv.tags,
+        "urgency": conv.urgency,
+        "persona": conv.persona,
+        "product_slug": conv.product_slug,
+        "sentiment": conv.sentiment,
+        "participants": [p.model_dump() for p in conv.participants],
+        "status": conv.status,
+        "snooze_until": conv.snooze_until.isoformat() if conv.snooze_until else None,
+        "parent_action_id": conv.parent_action_id,
+        "links": conv.links.model_dump() if conv.links else None,
+        "needs_founder_action": conv.needs_founder_action,
+        "organization_id": conv.organization_id,
+    }
+
+
+def _thread_message_to_meta(msg: ThreadMessage) -> dict[str, Any]:
+    """Build the ``message_metadata`` JSONB payload for a ThreadMessage."""
+    return {
+        "author": msg.author.model_dump(),
+        "attachments": [a.model_dump() for a in msg.attachments],
+        "reactions": msg.reactions,
+        "parent_message_id": msg.parent_message_id,
+    }
+
+
+def _author_kind_to_role(kind: str) -> str:
+    """Map Pydantic ``ConversationParticipant.kind`` to the DB ``role`` CHECK constraint."""
+    return "persona" if kind == "persona" else "user"
+
+
+def _row_to_thread_message(row: ConversationMessageRecord) -> ThreadMessage:
+    meta: dict[str, Any] = row.message_metadata or {}
+    author_raw = meta.get("author")
+    if author_raw:
+        try:
+            author = ConversationParticipant.model_validate(author_raw)
+        except (ValidationError, TypeError):
+            kind = "persona" if row.role == "persona" else "founder"
+            author = ConversationParticipant(
+                id=row.persona_slug or "system",
+                kind=kind,
+            )
+    else:
+        # Legacy row: reconstruct minimal author from role/persona_slug
+        kind = "persona" if row.role == "persona" else "founder"
+        author = ConversationParticipant(
+            id=row.persona_slug or "system",
+            kind=kind,
+        )
+    attachments: list[Attachment] = []
+    for a in meta.get("attachments", []):
+        try:
+            attachments.append(Attachment.model_validate(a))
+        except (ValidationError, TypeError) as exc:
+            logger.warning(
+                "conversations: skipping malformed attachment in msg %s: %s", row.id, exc
+            )
+    return ThreadMessage(
+        id=str(row.id),
+        author=author,
+        body_md=row.content,
+        attachments=attachments,
+        created_at=row.created_at,
+        reactions=meta.get("reactions", {}),
+        parent_message_id=meta.get("parent_message_id"),
+    )
+
+
+def _row_to_conversation(
+    conv_row: ConversationRecord,
+    msg_rows: list[ConversationMessageRecord],
+) -> Conversation:
+    m: dict[str, Any] = conv_row.metadata_ or {}
+
+    snooze_until: datetime | None = None
+    raw_snooze = m.get("snooze_until")
+    if raw_snooze:
+        try:
+            snooze_until = datetime.fromisoformat(raw_snooze)
+        except (ValueError, TypeError) as exc:
+            logger.warning(
+                "conversations: bad snooze_until %r for %s: %s",
+                raw_snooze,
+                conv_row.id,
+                exc,
+            )
+
+    participants: list[ConversationParticipant] = []
+    for p in m.get("participants", []):
+        try:
+            participants.append(ConversationParticipant.model_validate(p))
+        except (ValidationError, TypeError) as exc:
+            logger.warning(
+                "conversations: skipping malformed participant for %s: %s", conv_row.id, exc
+            )
+
+    links: ConversationLinks | None = None
+    raw_links = m.get("links")
+    if raw_links:
+        try:
+            links = ConversationLinks.model_validate(raw_links)
+        except (ValidationError, TypeError) as exc:
+            logger.warning("conversations: skipping malformed links for %s: %s", conv_row.id, exc)
+
+    sorted_msgs = sorted(msg_rows, key=lambda r: r.created_at)
+    return Conversation(
+        id=str(conv_row.id),
+        title=conv_row.title,
+        tags=m.get("tags", []),
+        urgency=m.get("urgency", "normal"),
+        persona=m.get("persona"),
+        product_slug=m.get("product_slug"),
+        sentiment=m.get("sentiment"),
+        participants=participants,
+        messages=[_row_to_thread_message(mr) for mr in sorted_msgs],
+        created_at=conv_row.created_at,
+        updated_at=conv_row.updated_at,
+        status=m.get("status", "open"),
+        snooze_until=snooze_until,
+        parent_action_id=m.get("parent_action_id"),
+        links=links,
+        needs_founder_action=m.get("needs_founder_action", False),
+        organization_id=m.get("organization_id"),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Async DB helpers (internal — called via _run() from public sync API)
+# ---------------------------------------------------------------------------
+
+
+async def _load_messages(
+    session: AsyncSession,
+    conversation_uuid: _uuid_mod.UUID,
+) -> list[ConversationMessageRecord]:
+    result = await session.execute(
+        select(ConversationMessageRecord)
+        .where(ConversationMessageRecord.conversation_id == conversation_uuid)
+        .order_by(ConversationMessageRecord.created_at.asc())
+    )
+    return list(result.scalars().all())
+
+
+async def _async_get_conversation(
+    conversation_id: str,
+    *,
+    organization_id: str | None = None,
+) -> Conversation:
+    try:
+        conv_uuid = _uuid_mod.UUID(conversation_id)
+    except ValueError as exc:
+        raise KeyError(f"Conversation {conversation_id!r} not found") from exc
+
+    async with _session() as session:
+        result = await session.execute(
+            select(ConversationRecord).where(ConversationRecord.id == conv_uuid)
+        )
+        conv_row = result.scalar_one_or_none()
+        if conv_row is None:
+            raise KeyError(f"Conversation {conversation_id!r} not found")
+        msg_rows = await _load_messages(session, conv_uuid)
+        conv = _row_to_conversation(conv_row, msg_rows)
+
+    _ensure_conversation_organization(conv, organization_id)
+    return conv
+
+
+async def _upsert_conversation_row(
+    session: AsyncSession,
+    conv: Conversation,
+) -> None:
+    """Upsert the ConversationRecord for *conv* in an already-open session."""
+    from sqlalchemy.dialects.postgresql import insert as pg_insert
+
+    conv_uuid = _uuid_mod.UUID(conv.id)
+    await session.execute(
+        pg_insert(ConversationRecord)
+        .values(
+            id=conv_uuid,
+            title=conv.title,
+            created_at=conv.created_at,
+            updated_at=conv.updated_at,
+            metadata_=_conversation_to_meta(conv),
+        )
+        .on_conflict_do_update(
+            index_elements=["id"],
+            set_={
+                "title": conv.title,
+                "updated_at": conv.updated_at,
+                "metadata_": _conversation_to_meta(conv),
+            },
+        )
+    )
+
+
+async def _upsert_message_row(
+    session: AsyncSession,
+    msg: ThreadMessage,
+    conversation_uuid: _uuid_mod.UUID,
+) -> None:
+    """Upsert a single ConversationMessageRecord."""
+    from sqlalchemy.dialects.postgresql import insert as pg_insert
+
+    msg_uuid = _uuid_mod.UUID(msg.id)
+    role = _author_kind_to_role(msg.author.kind)
+    await session.execute(
+        pg_insert(ConversationMessageRecord)
+        .values(
+            id=msg_uuid,
+            conversation_id=conversation_uuid,
+            role=role,
+            content=msg.body_md,
+            persona_slug=msg.author.id if msg.author.kind == "persona" else None,
+            model_used=None,
+            created_at=msg.created_at,
+            # Compute tsvector explicitly so tests (no trigger) and production both work.
+            content_tsv=func.to_tsvector("english", msg.body_md),
+            message_metadata=_thread_message_to_meta(msg),
+        )
+        .on_conflict_do_update(
+            index_elements=["id"],
+            set_={
+                "content": msg.body_md,
+                "content_tsv": func.to_tsvector("english", msg.body_md),
+                "message_metadata": _thread_message_to_meta(msg),
+                "persona_slug": msg.author.id if msg.author.kind == "persona" else None,
+            },
+        )
+    )
+
+
+async def _async_save_conversation(conv: Conversation) -> None:
+    """Full replace-all-messages upsert.
+
+    Used by the expense service (which modifies a Conversation copy and saves
+    the whole object) and by the backfill script.
+    """
+    conv_uuid = _uuid_mod.UUID(conv.id)
+    async with _session() as session:
+        await _upsert_conversation_row(session, conv)
+        # Delete all existing messages for this conversation, then re-insert.
+        # This is a replace-all semantics: the expense service sends the full
+        # updated message list, so a DELETE+INSERT is always consistent.
+        await session.execute(
+            text("DELETE FROM conversation_messages WHERE conversation_id = :cid").bindparams(
+                cid=conv_uuid
+            )
+        )
+        for msg in conv.messages:
+            await _upsert_message_row(session, msg, conv_uuid)
+
+
+async def _async_create_conversation(
     create: ConversationCreate,
     *,
     organization_id: str | None = None,
     push_user_id: str | None = None,
 ) -> Conversation:
-    """Create a new Conversation and persist it to disk."""
     _validate_conversation_tags(create.tags)
     now = datetime.now(UTC)
     status: StatusLevel = (
         "needs-action" if create.needs_founder_action else _default_status(create.urgency)
     )
+    from uuid import uuid4
+
     conv = Conversation(
         id=str(uuid4()),
         title=create.title,
@@ -286,26 +501,309 @@ def create_conversation(
         needs_founder_action=create.needs_founder_action,
         organization_id=organization_id,
     )
-    _save_conversation(conv)
+
+    conv_uuid = _uuid_mod.UUID(conv.id)
+    async with _session() as session:
+        await _upsert_conversation_row(session, conv)
+        for msg in conv.messages:
+            await _upsert_message_row(session, msg, conv_uuid)
+
     _maybe_push_or_email(conv, push_user_id=push_user_id or "founder")
     return conv
+
+
+async def _async_list_conversations(
+    status_filter: str | None,
+    search: str | None,
+    cursor: str | None,
+    limit: int,
+    *,
+    organization_id: str | None,
+    product_slug: str | None,
+) -> ConversationsListPage:
+    async with _session() as session:
+        # ------------------------------------------------------------------ FTS
+        candidate_uuids: list[_uuid_mod.UUID] | None = None
+        if search:
+            # FTS on message content via tsvector + ILIKE on conversation title.
+            # Title ILIKE trade-off: simpler than a tsvector index on title; for
+            # Brain's scale (<<10 000 conversations) the sequential scan is fast.
+            fts_result = await session.execute(
+                text(
+                    """
+                    WITH fts_hits AS (
+                        SELECT DISTINCT cm.conversation_id,
+                            MAX(ts_rank(cm.content_tsv,
+                                plainto_tsquery('english', :q))) AS rank
+                        FROM conversation_messages cm
+                        WHERE cm.content_tsv IS NOT NULL
+                          AND cm.content_tsv @@ plainto_tsquery('english', :q)
+                        GROUP BY cm.conversation_id
+                    ),
+                    title_hits AS (
+                        SELECT c.id AS conversation_id, 0.5::float AS rank
+                        FROM conversations c
+                        WHERE c.title ILIKE :pat
+                    ),
+                    combined AS (
+                        SELECT conversation_id, MAX(rank) AS rank
+                        FROM (
+                            SELECT * FROM fts_hits
+                            UNION ALL
+                            SELECT * FROM title_hits
+                        ) u
+                        GROUP BY conversation_id
+                    )
+                    SELECT conversation_id FROM combined ORDER BY rank DESC
+                    """
+                ),
+                {"q": search, "pat": f"%{search}%"},
+            )
+            candidate_uuids = [row[0] for row in fts_result]
+            if not candidate_uuids:
+                return ConversationsListPage(items=[], next_cursor=None, total=0)
+
+        # -------------------------------------------------- load conversations
+        stmt = select(ConversationRecord)
+        if candidate_uuids is not None:
+            stmt = stmt.where(ConversationRecord.id.in_(candidate_uuids))
+        # Apply status filter at SQL level for efficiency.
+        filter_status: str | None = (
+            None if (status_filter is None or status_filter == "all") else status_filter
+        )
+        if filter_status:
+            stmt = stmt.where(ConversationRecord.metadata_["status"].astext == filter_status)
+        stmt = stmt.order_by(ConversationRecord.updated_at.desc())
+
+        conv_result = await session.execute(stmt)
+        all_conv_rows = list(conv_result.scalars().all())
+
+        # --------------------------------------------------- load messages
+        msgs_by_conv: dict[_uuid_mod.UUID, list[ConversationMessageRecord]] = {}
+        if all_conv_rows:
+            conv_uuids = [r.id for r in all_conv_rows]
+            msg_result = await session.execute(
+                select(ConversationMessageRecord)
+                .where(ConversationMessageRecord.conversation_id.in_(conv_uuids))
+                .order_by(ConversationMessageRecord.created_at.asc())
+            )
+            for mr in msg_result.scalars():
+                msgs_by_conv.setdefault(mr.conversation_id, []).append(mr)
+
+    # -------------------------------------------- Python-level filters + sort
+    all_convs = [_row_to_conversation(r, msgs_by_conv.get(r.id, [])) for r in all_conv_rows]
+
+    filtered: list[Conversation] = [
+        c
+        for c in all_convs
+        if _conversation_matches_organization(c, organization_id)
+        and (product_slug is None or (c.product_slug or "") == product_slug)
+    ]
+
+    # Preserve FTS relevance order when search was used, else sort by updated_at.
+    if candidate_uuids is not None:
+        uuid_rank: dict[str, int] = {str(uid): idx for idx, uid in enumerate(candidate_uuids)}
+        filtered.sort(key=lambda c: uuid_rank.get(c.id, len(candidate_uuids)))
+    else:
+        filtered.sort(key=lambda c: c.updated_at, reverse=True)
+
+    total = len(filtered)
+
+    # Cursor pagination: identical logic to the JSON-file implementation.
+    start_idx = 0
+    if cursor:
+        for i, c in enumerate(filtered):
+            if c.id == cursor:
+                start_idx = i + 1
+                break
+
+    page = filtered[start_idx : start_idx + limit]
+    next_cursor = page[-1].id if len(page) == limit and start_idx + limit < total else None
+    return ConversationsListPage(items=page, next_cursor=next_cursor, total=total)
+
+
+async def _async_append_message(
+    conversation_id: str,
+    req: AppendMessageRequest,
+    *,
+    organization_id: str | None = None,
+) -> ThreadMessage:
+    conv = await _async_get_conversation(conversation_id, organization_id=organization_id)
+    parent_id = req.parent_message_id
+    if parent_id and not any(m.id == parent_id for m in conv.messages):
+        raise ValueError(f"Parent message {parent_id!r} not found in conversation")
+    from uuid import uuid4
+
+    now = datetime.now(UTC)
+    msg = ThreadMessage(
+        id=str(uuid4()),
+        author=req.author,
+        body_md=req.body_md,
+        attachments=req.attachments,
+        created_at=now,
+        reactions={},
+        parent_message_id=parent_id,
+    )
+    conv_uuid = _uuid_mod.UUID(conversation_id)
+    async with _session() as session:
+        # Append the new message row
+        await _upsert_message_row(session, msg, conv_uuid)
+        # Update conversation updated_at and metadata.status (unchanged here, just timestamp)
+        new_meta = _conversation_to_meta(conv)
+        await session.execute(
+            text(
+                "UPDATE conversations SET updated_at = :ts, metadata = :meta WHERE id = :cid"
+            ).bindparams(ts=now, meta=new_meta, cid=conv_uuid)
+        )
+    return msg
+
+
+async def _async_update_conversation_status(
+    conversation_id: str,
+    status: StatusLevel,
+    *,
+    organization_id: str | None = None,
+) -> Conversation:
+    conv = await _async_get_conversation(conversation_id, organization_id=organization_id)
+    now = datetime.now(UTC)
+    conv = conv.model_copy(
+        update={
+            "status": status,
+            "updated_at": now,
+            "snooze_until": None if status != "snoozed" else conv.snooze_until,
+        }
+    )
+    await _async_save_conversation(conv)
+    return conv
+
+
+async def _async_snooze(
+    conversation_id: str,
+    until: datetime,
+    *,
+    organization_id: str | None = None,
+) -> Conversation:
+    conv = await _async_get_conversation(conversation_id, organization_id=organization_id)
+    now = datetime.now(UTC)
+    conv = conv.model_copy(update={"status": "snoozed", "snooze_until": until, "updated_at": now})
+    await _async_save_conversation(conv)
+    return conv
+
+
+async def _async_react(
+    conversation_id: str,
+    message_id: str,
+    emoji: str,
+    participant_id: str,
+    *,
+    organization_id: str | None = None,
+) -> ThreadMessage:
+    conv = await _async_get_conversation(conversation_id, organization_id=organization_id)
+    target: ThreadMessage | None = None
+    updated_msgs: list[ThreadMessage] = []
+    for msg in conv.messages:
+        if msg.id == message_id:
+            reactors = dict(msg.reactions)
+            bucket = list(reactors.get(emoji, []))
+            if participant_id in bucket:
+                bucket.remove(participant_id)
+            else:
+                bucket.append(participant_id)
+            if bucket:
+                reactors[emoji] = bucket
+            else:
+                reactors.pop(emoji, None)
+            target = msg.model_copy(update={"reactions": reactors})
+            updated_msgs.append(target)
+        else:
+            updated_msgs.append(msg)
+    if target is None:
+        raise KeyError(f"Message {message_id!r} not found in conversation {conversation_id!r}")
+    now = datetime.now(UTC)
+    updated_conv = conv.model_copy(update={"messages": updated_msgs, "updated_at": now})
+    await _async_save_conversation(updated_conv)
+    return target
+
+
+async def _async_search_conversations(
+    query: str,
+    limit: int,
+    *,
+    organization_id: str | None = None,
+) -> list[Conversation]:
+    page = await _async_list_conversations(
+        status_filter=None,
+        search=query,
+        cursor=None,
+        limit=limit,
+        organization_id=organization_id,
+        product_slug=None,
+    )
+    return page.items
+
+
+async def _async_unread_count(
+    status_filter: str = "needs-action",
+    *,
+    organization_id: str | None = None,
+) -> int:
+    page = await _async_list_conversations(
+        status_filter=status_filter,
+        search=None,
+        cursor=None,
+        limit=10_000,
+        organization_id=organization_id,
+        product_slug=None,
+    )
+    return page.total
+
+
+async def _async_admin_conversation_counts(
+    *,
+    organization_id: str | None = None,
+) -> tuple[int, int]:
+    today = datetime.now(UTC).date()
+    page = await _async_list_conversations(
+        status_filter=None,
+        search=None,
+        cursor=None,
+        limit=10_000,
+        organization_id=organization_id,
+        product_slug=None,
+    )
+    today_updated = sum(1 for c in page.items if c.updated_at.astimezone(UTC).date() == today)
+    return page.total, today_updated
+
+
+async def _async_needs_action_badge_metrics(
+    status_filter: str = "needs-action",
+    *,
+    organization_id: str | None = None,
+) -> dict[str, int | bool]:
+    page = await _async_list_conversations(
+        status_filter=status_filter,
+        search=None,
+        cursor=None,
+        limit=10_000,
+        organization_id=organization_id,
+        product_slug=None,
+    )
+    return {
+        "count": page.total,
+        "has_critical": any(c.urgency == "critical" for c in page.items),
+    }
+
+
+# ---------------------------------------------------------------------------
+# Notification helpers (unchanged — same as JSON-file implementation)
+# ---------------------------------------------------------------------------
 
 
 def _maybe_push_or_email(conv: Conversation, *, push_user_id: str = "founder") -> None:
     """Deliver founder notifications for high/critical + needs_founder_action.
 
-    Runs **web push** (when VAPID is configured) and **Gmail SMTP** as a
-    fallback when push is not configured or fails.
-
-    - Push payload body is truncated to **120 characters** (provider size caps).
-    - SMTP email uses the **full** first message body (no truncation).
-    - ``EmailConfigError`` (missing Gmail env) is **re-raised** so callers
-      see misconfiguration — no silent skip (no-silent-fallback.mdc).
-    - Other SMTP send failures are dead-lettered (logged at error); the
-      Conversation is already persisted.
-
-    Both channels are attempted when applicable: if push succeeds, SMTP is
-    skipped for that create to avoid duplicate notifications.
+    Runs web push (when VAPID is configured) and Gmail SMTP as a fallback.
+    ``EmailConfigError`` is re-raised so callers see misconfiguration (no-silent-fallback).
     """
     if conv.urgency not in _HIGH_URGENCY or not conv.needs_founder_action:
         return
@@ -345,7 +843,6 @@ def _maybe_push_or_email(conv: Conversation, *, push_user_id: str = "founder") -
     if push_delivered:
         return
 
-    # Gmail SMTP fallback
     from app.services.email_outbound import EmailConfigError, send_conversation_email
 
     attachments = [{"id": a.id, "url": a.url} for msg in conv.messages for a in msg.attachments]
@@ -357,10 +854,8 @@ def _maybe_push_or_email(conv: Conversation, *, push_user_id: str = "founder") -
             attachments=attachments or None,
         )
     except EmailConfigError:
-        # Re-raise so callers know SMTP is not configured — no silent skip.
         raise
     except Exception as exc:
-        # SMTP send failure: dead-letter (log error, don't block conversation create).
         logger.error(
             "email_outbound: SMTP send failed for conv %s — dead-lettered: %s",
             conv.id,
@@ -368,17 +863,38 @@ def _maybe_push_or_email(conv: Conversation, *, push_user_id: str = "founder") -
         )
 
 
-def get_conversation(conversation_id: str, *, organization_id: str | None = None) -> Conversation:
+# ---------------------------------------------------------------------------
+# Public synchronous API (preserves all existing caller signatures)
+# ---------------------------------------------------------------------------
+
+
+def create_conversation(
+    create: ConversationCreate,
+    *,
+    organization_id: str | None = None,
+    push_user_id: str | None = None,
+) -> Conversation:
+    """Create a new Conversation and persist it to Postgres."""
+    return _run(
+        _async_create_conversation(
+            create,
+            organization_id=organization_id,
+            push_user_id=push_user_id,
+        )
+    )
+
+
+def get_conversation(
+    conversation_id: str,
+    *,
+    organization_id: str | None = None,
+) -> Conversation:
     """Load a single Conversation by ID.
 
     Raises KeyError if not found.
     Raises PermissionError if the conversation does not belong to *organization_id*.
     """
-    conv = _load_conversation(conversation_id)
-    if conv is None:
-        raise KeyError(f"Conversation {conversation_id!r} not found")
-    _ensure_conversation_organization(conv, organization_id)
-    return conv
+    return _run(_async_get_conversation(conversation_id, organization_id=organization_id))
 
 
 def list_conversations(
@@ -396,53 +912,21 @@ def list_conversations(
     ``snoozed``, ``resolved``, ``archived``.  ``all`` or None returns
     everything.
 
-    *search* performs FTS5 full-text search (AND-mode) prior to status
-    filter so both constraints are applied.
+    *search* performs Postgres FTS (message bodies) + ILIKE (title).
 
     *cursor* is the last conversation ID seen; pagination continues from
     the item immediately after it.
     """
-    if search:
-        candidate_ids: list[str] = _fts_search(search, limit=500)
-        all_ids = [cid for cid in candidate_ids if (_conversation_path(cid)).exists()]
-    else:
-        all_ids = _list_all_ids()
-
-    # Apply status filter
-    filter_status: str | None = (
-        None if (status_filter is None or status_filter == "all") else status_filter
+    return _run(
+        _async_list_conversations(
+            status_filter,
+            search,
+            cursor,
+            limit,
+            organization_id=organization_id,
+            product_slug=product_slug,
+        )
     )
-
-    convs: list[Conversation] = []
-    for cid in all_ids:
-        conv = _load_conversation(cid)
-        if conv is None:
-            continue
-        if filter_status and conv.status != filter_status:
-            continue
-        if not _conversation_matches_organization(conv, organization_id):
-            continue
-        if product_slug and (conv.product_slug or "") != product_slug:
-            continue
-        convs.append(conv)
-
-    # Sort newest first by updated_at
-    convs.sort(key=lambda c: c.updated_at, reverse=True)
-
-    total = len(convs)
-
-    # Cursor pagination: skip to just after `cursor`
-    start_idx = 0
-    if cursor:
-        for i, c in enumerate(convs):
-            if c.id == cursor:
-                start_idx = i + 1
-                break
-
-    page = convs[start_idx : start_idx + limit]
-    next_cursor = page[-1].id if len(page) == limit and start_idx + limit < total else None
-
-    return ConversationsListPage(items=page, next_cursor=next_cursor, total=total)
 
 
 def append_message(
@@ -452,24 +936,7 @@ def append_message(
     organization_id: str | None = None,
 ) -> ThreadMessage:
     """Append a ThreadMessage to an existing conversation."""
-    conv = get_conversation(conversation_id, organization_id=organization_id)
-    parent_id = req.parent_message_id
-    if parent_id and not any(m.id == parent_id for m in conv.messages):
-        raise ValueError(f"Parent message {parent_id!r} not found in conversation")
-    now = datetime.now(UTC)
-    msg = ThreadMessage(
-        id=str(uuid4()),
-        author=req.author,
-        body_md=req.body_md,
-        attachments=req.attachments,
-        created_at=now,
-        reactions={},
-        parent_message_id=parent_id,
-    )
-    conv.messages.append(msg)
-    conv.updated_at = now
-    _save_conversation(conv)
-    return msg
+    return _run(_async_append_message(conversation_id, req, organization_id=organization_id))
 
 
 def update_conversation_status(
@@ -479,25 +946,19 @@ def update_conversation_status(
     organization_id: str | None = None,
 ) -> Conversation:
     """Update the status of a conversation."""
-    conv = get_conversation(conversation_id, organization_id=organization_id)
-    conv.status = status
-    conv.updated_at = datetime.now(UTC)
-    if status != "snoozed":
-        conv.snooze_until = None
-    _save_conversation(conv)
-    return conv
+    return _run(
+        _async_update_conversation_status(conversation_id, status, organization_id=organization_id)
+    )
 
 
 def snooze(
-    conversation_id: str, until: datetime, *, organization_id: str | None = None
+    conversation_id: str,
+    until: datetime,
+    *,
+    organization_id: str | None = None,
 ) -> Conversation:
     """Snooze a conversation until the given datetime."""
-    conv = get_conversation(conversation_id, organization_id=organization_id)
-    conv.status = "snoozed"
-    conv.snooze_until = until
-    conv.updated_at = datetime.now(UTC)
-    _save_conversation(conv)
-    return conv
+    return _run(_async_snooze(conversation_id, until, organization_id=organization_id))
 
 
 def react(
@@ -509,20 +970,15 @@ def react(
     organization_id: str | None = None,
 ) -> ThreadMessage:
     """Add (or remove if already present) an emoji reaction to a message."""
-    conv = get_conversation(conversation_id, organization_id=organization_id)
-    for msg in conv.messages:
-        if msg.id == message_id:
-            reactors = msg.reactions.setdefault(emoji, [])
-            if participant_id in reactors:
-                reactors.remove(participant_id)
-            else:
-                reactors.append(participant_id)
-            if not reactors:
-                del msg.reactions[emoji]
-            conv.updated_at = datetime.now(UTC)
-            _save_conversation(conv)
-            return msg
-    raise KeyError(f"Message {message_id!r} not found in conversation {conversation_id!r}")
+    return _run(
+        _async_react(
+            conversation_id,
+            message_id,
+            emoji,
+            participant_id,
+            organization_id=organization_id,
+        )
+    )
 
 
 def search_conversations(
@@ -531,48 +987,25 @@ def search_conversations(
     *,
     organization_id: str | None = None,
 ) -> list[Conversation]:
-    """Full-text search via SQLite FTS5 sidecar index."""
-    ids = _fts_search(query, limit=limit)
-    results: list[Conversation] = []
-    for cid in ids:
-        conv = _load_conversation(cid)
-        if conv is not None and _conversation_matches_organization(conv, organization_id):
-            results.append(conv)
-    return results
+    """Full-text search via Postgres tsvector index on message bodies + ILIKE on title."""
+    return _run(_async_search_conversations(query, limit, organization_id=organization_id))
 
 
-def unread_count(status_filter: str = "needs-action", *, organization_id: str | None = None) -> int:
+def unread_count(
+    status_filter: str = "needs-action",
+    *,
+    organization_id: str | None = None,
+) -> int:
     """Return the count of conversations matching *status_filter* (for badge/PWA)."""
-    page = list_conversations(
-        status_filter=status_filter, limit=10_000, organization_id=organization_id
-    )
-    return page.total
+    return _run(_async_unread_count(status_filter, organization_id=organization_id))
 
 
 def admin_conversation_counts(
     *,
     organization_id: str | None = None,
 ) -> tuple[int, int]:
-    """Return (total conversations, count updated today UTC) for admin stats.
-
-    Scans JSON-backed rows — acceptable for operator dashboards (WS-82).
-    """
-    now = datetime.now(UTC)
-    today = now.date()
-    total = 0
-    today_updated = 0
-    for cid in _list_all_ids():
-        conv = _load_conversation(cid)
-        if conv is None:
-            continue
-        if not _conversation_matches_organization(conv, organization_id):
-            continue
-        total += 1
-        u = conv.updated_at
-        u_day = u.astimezone(UTC).date() if u.tzinfo else u.replace(tzinfo=UTC).date()
-        if u_day == today:
-            today_updated += 1
-    return total, today_updated
+    """Return (total conversations, count updated today UTC) for admin stats."""
+    return _run(_async_admin_conversation_counts(organization_id=organization_id))
 
 
 def needs_action_badge_metrics(
@@ -581,17 +1014,29 @@ def needs_action_badge_metrics(
     organization_id: str | None = None,
 ) -> dict[str, int | bool]:
     """Count + whether any matching row is urgency=critical (sidebar badge styling)."""
-    page = list_conversations(
-        status_filter=status_filter, limit=10_000, organization_id=organization_id
+    return _run(_async_needs_action_badge_metrics(status_filter, organization_id=organization_id))
+
+
+def _save_conversation(conv: Conversation) -> None:
+    """Full upsert of a Conversation including all messages.
+
+    .. deprecated::
+        This private function is called directly by ``expenses.py``
+        (``resolve_expense_linked_conversation``).  That caller should be
+        migrated to use :func:`update_conversation_status` or an explicit
+        public mutator in a follow-up PR.  The function will remain until
+        that migration is complete.
+    """
+    logger.warning(
+        "conversations._save_conversation: called directly (deprecated private API); "
+        "caller should migrate to a public mutator.  conv_id=%s",
+        conv.id,
     )
-    return {
-        "count": page.total,
-        "has_critical": any(c.urgency == "critical" for c in page.items),
-    }
+    _run(_async_save_conversation(conv))
 
 
 # ---------------------------------------------------------------------------
-# Backfill
+# Backfill helpers
 # ---------------------------------------------------------------------------
 
 SourceKind = Literal["yaml", "brain_json", "studio_json", "none"]
@@ -611,35 +1056,40 @@ def backfill_from_founder_actions_yaml(path: Path | None = None) -> int:
     return backfill_founder_actions_detailed(path=path).created
 
 
-def backfill_founder_actions_detailed(path: Path | None = None) -> FounderActionsBackfillResult:
-    """Import founder action tiers → Conversations (idempotent).
+def backfill_founder_actions_detailed(
+    path: Path | None = None,
+) -> FounderActionsBackfillResult:
+    """Import founder action tiers → Conversations (idempotent, Postgres-backed).
 
     Resolution order:
-    1. Explicit ``path`` when provided (``.yaml`` via PyYAML, ``.json`` via stdlib json)
+    1. Explicit ``path`` when provided
     2. ``apis/brain/data/founder_actions.yaml``
-    3. ``apis/brain/data/founder_actions.json`` (canonical JSON sibling to YAML)
-    4. ``apps/studio/src/data/founder-actions.json`` (Studio sync output)
+    3. ``apis/brain/data/founder_actions.json``
+    4. ``apps/studio/src/data/founder-actions.json``
 
-    Idempotency: there is no ``source_ref`` field on ``Conversation`` today; we use
-    ``parent_action_id = slugify(title)`` as the stable dedup key (same title → same row).
-
-    Each new row uses ``needs_founder_action=True`` so status is ``needs-action`` and
-    founder notifications behave consistently.
+    Idempotency: dedup key is ``parent_action_id = slugify(title)``.
+    Existing conversations with the same ``parent_action_id`` are skipped.
     """
+    import json
+    import os
+
     data: dict[str, Any] | None = None
     source_kind: SourceKind = "none"
     parse_error: str | None = None
     resolved_path: Path | None = None
 
+    def _data_dir() -> Path:
+        repo_root = os.environ.get("REPO_ROOT", "").strip()
+        if repo_root:
+            return Path(repo_root) / "apis" / "brain" / "data"
+        return Path(__file__).resolve().parents[2] / "data"
+
     def _try_load_json(p: Path, kind: SourceKind) -> None:
         nonlocal data, source_kind, parse_error, resolved_path
-        if data is not None:
-            return
-        if not p.exists():
+        if data is not None or not p.exists():
             return
         try:
-            raw_json = p.read_text(encoding="utf-8")
-            data = json.loads(raw_json)
+            data = json.loads(p.read_text(encoding="utf-8"))
             source_kind = kind
             resolved_path = p
             parse_error = None
@@ -668,23 +1118,19 @@ def backfill_founder_actions_detailed(path: Path | None = None) -> FounderAction
             parse_error = f"failed to read {path}: {exc}"
             logger.error("backfill: %s", parse_error)
             return FounderActionsBackfillResult(
-                created=0,
-                source_kind="none",
-                parse_error=parse_error,
+                created=0, source_kind="none", parse_error=parse_error
             )
 
     if data is None:
         default_yaml = _data_dir() / "founder_actions.yaml"
         if default_yaml.exists():
             try:
-                raw = default_yaml.read_text(encoding="utf-8")
-                data = yaml.safe_load(raw)
+                data = yaml.safe_load(default_yaml.read_text(encoding="utf-8"))
                 source_kind = "yaml"
                 resolved_path = default_yaml
-                parse_error = None
                 logger.info("backfill: using YAML at %s", default_yaml)
             except (OSError, yaml.YAMLError) as exc:
-                logger.warning("backfill: could not read default YAML %s: %s", default_yaml, exc)
+                logger.warning("backfill: could not read default YAML: %s", exc)
 
     if data is None:
         _try_load_json(_data_dir() / "founder_actions.json", "brain_json")
@@ -708,11 +1154,8 @@ def backfill_founder_actions_detailed(path: Path | None = None) -> FounderAction
         logger.warning("backfill: %s", msg)
         return FounderActionsBackfillResult(created=0, source_kind=source_kind, parse_error=msg)
 
-    existing_ids: set[str] = set()
-    for cid in _list_all_ids():
-        conv = _load_conversation(cid)
-        if conv and conv.parent_action_id:
-            existing_ids.add(conv.parent_action_id)
+    # Collect existing parent_action_ids from Postgres (for dedup)
+    existing_parent_ids: set[str] = _run(_async_collect_existing_parent_action_ids())
 
     created = 0
     for tier in tiers:
@@ -723,9 +1166,8 @@ def backfill_founder_actions_detailed(path: Path | None = None) -> FounderAction
             title = str(item.get("title", "")).strip()
             if not title:
                 continue
-            # Stable dedup key — mirrors a future ``source_ref`` for founder-action imports.
             parent_action_id = _slugify(title)
-            if parent_action_id in existing_ids:
+            if parent_action_id in existing_parent_ids:
                 logger.debug("backfill: skipping duplicate %r", parent_action_id)
                 continue
 
@@ -764,7 +1206,7 @@ def backfill_founder_actions_detailed(path: Path | None = None) -> FounderAction
                 needs_founder_action=True,
             )
             conv = create_conversation(create)
-            existing_ids.add(parent_action_id)
+            existing_parent_ids.add(parent_action_id)
             created += 1
             logger.info("backfill: created conversation %r (%s)", conv.id, title)
 
@@ -775,6 +1217,19 @@ def backfill_founder_actions_detailed(path: Path | None = None) -> FounderAction
         resolved_path,
     )
     return FounderActionsBackfillResult(created=created, source_kind=source_kind, parse_error=None)
+
+
+async def _async_collect_existing_parent_action_ids() -> set[str]:
+    """Return the set of all non-null parent_action_ids already in Postgres."""
+    async with _session() as session:
+        result = await session.execute(
+            text(
+                "SELECT metadata->>'parent_action_id' "
+                "FROM conversations "
+                "WHERE metadata->>'parent_action_id' IS NOT NULL"
+            )
+        )
+        return {row[0] for row in result if row[0]}
 
 
 def _slugify(text: str) -> str:

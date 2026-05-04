@@ -75,8 +75,10 @@ class TestDefaultThresholdRoutesAll:
         )
         assert expense.status == "pending"
         assert expense.conversation_id is not None
-        conv_dir = tmp_path / "apis" / "brain" / "data" / "conversations"
-        assert (conv_dir / f"{expense.conversation_id}.json").is_file()
+        from app.services import conversations as conv_svc
+
+        conv = conv_svc.get_conversation(expense.conversation_id)
+        assert conv.id == expense.conversation_id
 
 
 class TestRaisedThresholdAutoApprove:
@@ -238,10 +240,10 @@ class TestMonthlyClose:
             datetime(2026, 4, 5, 10, 0, 0, tzinfo=ZoneInfo("America/Los_Angeles"))
         )
         assert cid
-        conv_path = tmp_path / "apis" / "brain" / "data" / "conversations" / f"{cid}.json"
-        assert conv_path.is_file()
-        data = json.loads(conv_path.read_text(encoding="utf-8"))
-        assert "expense-monthly-close" in data.get("tags", [])
+        from app.services import conversations as conv_svc
+
+        conv = conv_svc.get_conversation(cid)
+        assert "expense-monthly-close" in conv.tags
 
 
 class TestThresholdRaiseAudit:
@@ -281,6 +283,6 @@ class TestThresholdRaiseAudit:
                 persona="cfo",
                 needs_founder_action=False,
             )
-            conv_svc.create_conversation(create)
-        conv_dir = tmp_path / "apis" / "brain" / "data" / "conversations"
-        assert any(p.name.endswith(".json") for p in conv_dir.glob("*.json"))
+            created = conv_svc.create_conversation(create)
+            assert created.title.startswith("Expense rules:")
+            assert "expense-rule-change" in created.tags
