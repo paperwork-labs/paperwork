@@ -1,4 +1,5 @@
 import { BrainTranscriptsList } from "@/components/admin/brain/BrainTranscriptsList";
+import { TranscriptsOperatorPanel } from "@/components/admin/brain/TranscriptsOperatorPanel";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +14,8 @@ export default function AdminTranscriptsPage() {
           Cursor agent transcripts ingested into Brain — grouped by session id.
         </p>
       </header>
+
+      <TranscriptsOperatorPanel />
 
       <BrainTranscriptsList />
     </div>
