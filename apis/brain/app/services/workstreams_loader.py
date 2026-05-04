@@ -25,11 +25,11 @@ from app.schemas.workstream import Workstream, WorkstreamsFile
 _TRACK_RE = re.compile(r"^[A-Z][0-9A-Z]{0,2}$")
 _WORKSTREAMS_REL = Path("apps/studio/src/data/workstreams.json")
 
-# Matches DB epic ids like ``epic-ws-82-studio-hq``, ``ws-82-studio-hq``,
-# ``WS_82_studio_hq``, etc. Capture group 1 is the 2-3 digit number, group 2
-# is the slug remainder.
-_EPIC_WS_RE = re.compile(r"(?:epic[-_])?ws[-_]?(\d{2,3})[-_](.+)", re.IGNORECASE)
-_BRIEF_TAG_PREFIX = "track:"
+# Loose slug shape used to coerce non-conforming brief_tag values into the
+# Workstream schema's permitted shape. Schema allows bare slugs and prefixed
+# slugs; this helper just makes sure we never write whitespace/punctuation
+# garbage.
+_SLUG_SCRUB_RE = re.compile(r"[^a-z0-9-]+")
 
 _cache_file: WorkstreamsFile | None = None
 _cache_at: float = 0.0
@@ -116,33 +116,44 @@ def _safe_title(raw: str, epic_id: str) -> str:
     return t[:100]
 
 
-def _normalize_workstream_id(epic_id: str) -> str:
-    """Map a DB epic id to the legacy ``WS-<NN>-<kebab-slug>`` Workstream id.
+_WORKSTREAM_ID_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_-]{0,99}$")
 
-    Examples:
-      ``epic-ws-82-studio-hq`` -> ``WS-82-studio-hq``
-      ``ws-69-pr-j``           -> ``WS-69-pr-j``
-      ``some-other-epic``      -> ``WS-99-some-other-epic`` (catch-all bucket)
+
+def _safe_workstream_id(epic_id: str) -> str:
+    """Return the epic id verbatim if it satisfies the schema, else a scrubbed slug.
+
+    The Workstream schema accepts both legacy ``WS-NN-...`` ids and DB-sourced
+    epic ids (``epic-ws-82-studio-hq``). This helper just guards against
+    pathological inputs (whitespace, leading digits, empty strings) so we
+    never raise ``ValidationError`` from the loader.
     """
     raw = (epic_id or "").strip()
-    m = _EPIC_WS_RE.search(raw)
-    if m:
-        num = m.group(1)
-        slug = re.sub(r"[^a-z0-9-]+", "-", m.group(2).lower()).strip("-") or "epic"
-        return f"WS-{num}-{slug}"
-    slug = re.sub(r"[^a-z0-9-]+", "-", raw.lower()).strip("-") or "epic"
-    return f"WS-99-{slug}"
+    if _WORKSTREAM_ID_RE.match(raw):
+        return raw
+    slug = _SLUG_SCRUB_RE.sub("-", raw.lower()).strip("-") or "epic"
+    return f"epic-{slug}" if not slug[:1].isalpha() else slug
 
 
-def _normalize_brief_tag(raw: object) -> str:
-    """Ensure the brief_tag is in ``track:<kebab-slug>`` form."""
-    if isinstance(raw, str):
-        s = raw.strip()
-        tail = s[len(_BRIEF_TAG_PREFIX) :] if s.startswith(_BRIEF_TAG_PREFIX) else s
-    else:
-        tail = ""
-    slug = re.sub(r"[^a-z0-9-]+", "-", tail.lower()).strip("-") or "general"
-    return f"{_BRIEF_TAG_PREFIX}{slug}"
+def _safe_brief_tag(raw: object) -> str:
+    """Coerce arbitrary ``epic.brief_tag`` values into a schema-valid slug.
+
+    The schema accepts bare slugs (``filefree``) and prefixed slugs
+    (``track:filefree``). We pass conforming values through unchanged and
+    scrub anything else into a bare slug.
+    """
+    if not isinstance(raw, str):
+        return "general"
+    s = raw.strip().lower()
+    if not s:
+        return "general"
+    if ":" in s:
+        prefix, _, tail = s.partition(":")
+        prefix_clean = _SLUG_SCRUB_RE.sub("-", prefix).strip("-")
+        tail_clean = _SLUG_SCRUB_RE.sub("-", tail).strip("-")
+        if prefix_clean and tail_clean:
+            return f"{prefix_clean}:{tail_clean}"
+        return tail_clean or prefix_clean or "general"
+    return _SLUG_SCRUB_RE.sub("-", s).strip("-") or "general"
 
 
 def epic_to_workstream(epic: Epic, *, priority_rank: int) -> Workstream:
@@ -161,14 +172,14 @@ def epic_to_workstream(epic: Epic, *, priority_rank: int) -> Workstream:
         est_pr = 1
 
     return Workstream(
-        id=_normalize_workstream_id(epic.id),
+        id=_safe_workstream_id(epic.id),
         title=_safe_title(epic.title, epic.id),
         track=track,
         priority=priority_rank,
         status=_epic_status_to_workstream(epic.status),
         percent_done=epic.percent_done,
         owner=_owner_slug_to_workstream_owner(epic.owner_employee_slug),
-        brief_tag=_normalize_brief_tag(epic.brief_tag),
+        brief_tag=_safe_brief_tag(epic.brief_tag),
         blockers=_blockers_as_str_list(epic.blockers),
         last_pr=None,
         last_activity=_dt_activity_iso(epic.last_activity),

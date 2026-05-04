@@ -25,6 +25,7 @@ from apscheduler.triggers.cron import CronTrigger
 
 from app.schedulers._history import run_with_scheduler_record
 from app.schedulers._kill_switch_guard import skip_if_brain_paused
+from app.utils.paths import brain_data_dir
 
 if TYPE_CHECKING:
     from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -42,39 +43,18 @@ _FAILURE_WINDOW_MINUTES = int(
 )
 
 
-def _brain_data_dir() -> Path:
-    """Return the brain ``data/`` directory in either repo or container layout.
-
-    - Container (Dockerfile ``COPY apis/brain/ /app/``): ``/app/data``.
-    - Repo: ``<repo>/apis/brain/data``.
-    - Override: ``BRAIN_DATA_DIR`` env var (absolute path).
-    """
-    env = os.environ.get("BRAIN_DATA_DIR", "").strip()
-    if env:
-        return Path(env)
-    container_data = Path("/app/data")
-    if container_data.exists() and container_data.is_dir():
-        return container_data
-    here = Path(__file__).resolve()
-    for parent in here.parents:
-        candidate = parent / "apis" / "brain" / "data"
-        if candidate.exists() and candidate.is_dir():
-            return candidate
-    return container_data
-
-
 def _probe_results_path() -> Path:
     env = os.environ.get("BRAIN_PROBE_RESULTS_JSON", "").strip()
     if env:
         return Path(env)
-    return _brain_data_dir() / "probe_results.json"
+    return brain_data_dir() / "probe_results.json"
 
 
 def _dispatch_queue_path() -> Path:
     env = os.environ.get("BRAIN_DISPATCH_QUEUE_JSON", "").strip()
     if env:
         return Path(env)
-    return _brain_data_dir() / "dispatch_queue.json"
+    return brain_data_dir() / "dispatch_queue.json"
 
 
 # ---------------------------------------------------------------------------

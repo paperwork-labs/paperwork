@@ -247,32 +247,10 @@ def test_install_registers_job() -> None:
 
 
 # -------------------------------------------------------------------
-# data dir resolution (Wave 0 fix: parents[4] crashed in /app container)
+# Path resolution (Wave 0 fix: parents[4] crashed in /app container).
+# Path helper itself is exhaustively covered in test_paths.py; here we only
+# verify the dispatcher's env-override pass-through still works.
 # -------------------------------------------------------------------
-
-
-def test_brain_data_dir_uses_env_override(monkeypatch, tmp_path: Path) -> None:
-    from app.schedulers import probe_failure_dispatcher as mod
-
-    target = tmp_path / "brain-data"
-    target.mkdir()
-    monkeypatch.setenv("BRAIN_DATA_DIR", str(target))
-    assert mod._brain_data_dir() == target
-
-
-def test_brain_data_dir_resolves_repo_layout(monkeypatch) -> None:
-    """In repo, falls back to ``<repo>/apis/brain/data``."""
-    from app.schedulers import probe_failure_dispatcher as mod
-
-    monkeypatch.delenv("BRAIN_DATA_DIR", raising=False)
-    # Ensure the container path doesn't accidentally exist on the test runner.
-    if Path("/app/data").exists() and not Path("/.dockerenv").exists():
-        # We're not in a container but /app/data exists for some reason; skip.
-        return
-    p = mod._brain_data_dir()
-    assert p.name == "data"
-    # Repo layout sentinel: parent directory should be ``brain``.
-    assert p.parent.name == "brain"
 
 
 def test_probe_results_path_env_override_wins(monkeypatch, tmp_path: Path) -> None:
@@ -289,3 +267,16 @@ def test_dispatch_queue_path_env_override_wins(monkeypatch, tmp_path: Path) -> N
     explicit = tmp_path / "custom_queue.json"
     monkeypatch.setenv("BRAIN_DISPATCH_QUEUE_JSON", str(explicit))
     assert mod._dispatch_queue_path() == explicit
+
+
+def test_probe_results_path_default_uses_canonical_brain_data_dir(
+    monkeypatch, tmp_path: Path
+) -> None:
+    """Without ``BRAIN_PROBE_RESULTS_JSON``, path comes from ``brain_data_dir()``."""
+    from app.schedulers import probe_failure_dispatcher as mod
+
+    monkeypatch.delenv("BRAIN_PROBE_RESULTS_JSON", raising=False)
+    target = tmp_path / "brain-data"
+    target.mkdir()
+    monkeypatch.setenv("BRAIN_DATA_DIR", str(target))
+    assert mod._probe_results_path() == target / "probe_results.json"

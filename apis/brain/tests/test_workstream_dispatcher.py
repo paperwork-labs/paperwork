@@ -171,36 +171,69 @@ async def test_load_epics_from_db_maps_active_and_in_progress(
     assert len(set(prios)) == len(prios)
 
 
-def test_normalize_workstream_id_handles_prod_shapes() -> None:
-    """Wave 0 unit-level coverage for the workstream id normalizer."""
-    from app.services.workstreams_loader import _normalize_workstream_id
-
-    assert _normalize_workstream_id("epic-ws-82-studio-hq") == "WS-82-studio-hq"
-    assert _normalize_workstream_id("WS-69-pr-j") == "WS-69-pr-j"
-    assert _normalize_workstream_id("ws-100-some-thing") == "WS-100-some-thing"
-    assert _normalize_workstream_id("epic-ws_82_studio_hq") == "WS-82-studio-hq"
-    assert _normalize_workstream_id("totally-other-epic").startswith("WS-99-")
-    assert _normalize_workstream_id("") == "WS-99-epic"
+def test_workstream_schema_accepts_legacy_ws_nn_ids() -> None:
+    """Hand-curated ``workstreams.json`` ids must continue to validate."""
+    ws = _ws(wid="WS-69-pr-j", priority=0, brief_tag="track:filefree")
+    assert ws.id == "WS-69-pr-j"
+    assert ws.brief_tag == "track:filefree"
 
 
-def test_normalize_brief_tag_coerces_bare_and_prefixed() -> None:
-    from app.services.workstreams_loader import _normalize_brief_tag
+def test_workstream_schema_accepts_db_epic_ids() -> None:
+    """Wave 0 fix: DB-sourced epic ids like ``epic-ws-82-studio-hq`` validate
+    directly without normalization. The legacy ``WS-NN-...`` regex is gone.
+    """
+    ws = _ws(wid="epic-ws-82-studio-hq", priority=0, brief_tag="studio")
+    assert ws.id == "epic-ws-82-studio-hq"
+    assert ws.brief_tag == "studio"
 
-    assert _normalize_brief_tag("studio") == "track:studio"
-    assert _normalize_brief_tag("track:studio") == "track:studio"
-    assert _normalize_brief_tag("Studio HQ") == "track:studio-hq"
-    assert _normalize_brief_tag("") == "track:general"
-    assert _normalize_brief_tag(None) == "track:general"
-    assert _normalize_brief_tag(42) == "track:general"
+
+def test_workstream_schema_rejects_truly_invalid_ids() -> None:
+    """Schema is permissive but still rejects garbage (whitespace, leading digits)."""
+    with pytest.raises(ValueError, match="ASCII kebab"):
+        _ws(wid="42-leads-with-digit", priority=0)
+    with pytest.raises(ValueError, match="ASCII kebab"):
+        _ws(wid="has spaces", priority=0)
+
+
+def test_safe_workstream_id_passthrough_for_valid_inputs() -> None:
+    """Loader-side guard: valid ids round-trip unchanged."""
+    from app.services.workstreams_loader import _safe_workstream_id
+
+    assert _safe_workstream_id("WS-69-pr-j") == "WS-69-pr-j"
+    assert _safe_workstream_id("epic-ws-82-studio-hq") == "epic-ws-82-studio-hq"
+    assert _safe_workstream_id("Q2-tech-debt") == "Q2-tech-debt"
+
+
+def test_safe_workstream_id_scrubs_pathological_inputs() -> None:
+    """Pathological DB rows still produce a schema-valid id."""
+    from app.schemas.workstream import _ID_RE
+    from app.services.workstreams_loader import _safe_workstream_id
+
+    # Verify *every* output satisfies the schema regex — that's the contract.
+    for inp in ["", "   ", "42-leads-with-digit", "has spaces!!", "epic-with-dot.x"]:
+        out = _safe_workstream_id(inp)
+        assert _ID_RE.match(out), f"_safe_workstream_id({inp!r}) returned {out!r}"
+
+
+def test_safe_brief_tag_passthrough_and_coercion() -> None:
+    """Loader-side guard: bare and prefixed slugs round-trip; junk → 'general'."""
+    from app.services.workstreams_loader import _safe_brief_tag
+
+    assert _safe_brief_tag("studio") == "studio"
+    assert _safe_brief_tag("track:filefree") == "track:filefree"
+    assert _safe_brief_tag("Studio HQ") == "studio-hq"
+    assert _safe_brief_tag("") == "general"
+    assert _safe_brief_tag(None) == "general"
+    assert _safe_brief_tag(42) == "general"
 
 
 @pytest.mark.asyncio
-async def test_load_epics_from_db_normalizes_prod_shaped_ids_and_brief_tags(
+async def test_load_epics_from_db_handles_prod_shaped_ids_and_brief_tags(
     db_session: AsyncSession,
 ) -> None:
     """Wave 0 regression: prod DB has ``epic-ws-82-studio-hq`` ids and bare
-    ``studio`` brief_tags; loader must coerce both to the legacy schema instead
-    of crashing the dispatcher loop with a Pydantic validation error.
+    ``studio`` brief_tags; with the relaxed schema, loader passes them through
+    verbatim instead of normalizing.
     """
     db_session.add_all(
         [
@@ -228,11 +261,10 @@ async def test_load_epics_from_db_normalizes_prod_shaped_ids_and_brief_tags(
 
     file = await load_epics_from_db(db_session)
     by_id = {w.id: w for w in file.workstreams}
-    assert "WS-82-studio-hq" in by_id, "epic-ws-82-studio-hq must normalize to WS-82-studio-hq"
-    assert by_id["WS-82-studio-hq"].brief_tag == "track:studio"
-    catchall = next((w for w in file.workstreams if w.id.startswith("WS-99-")), None)
-    assert catchall is not None, "non-WS epic ids fall into the WS-99 catch-all bucket"
-    assert catchall.brief_tag == "track:already-prefixed"
+    assert "epic-ws-82-studio-hq" in by_id
+    assert by_id["epic-ws-82-studio-hq"].brief_tag == "studio"
+    assert "epic-something-non-ws" in by_id
+    assert by_id["epic-something-non-ws"].brief_tag == "track:already-prefixed"
 
 
 @pytest.mark.asyncio
