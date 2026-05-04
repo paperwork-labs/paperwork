@@ -47,8 +47,24 @@ export function BrainTranscriptsList() {
 
   if (!data) {
     return (
-      <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-8 text-center">
-        <p className="text-sm text-zinc-400">Transcripts are still initializing.</p>
+      <div
+        className="rounded-xl border border-rose-900/40 bg-rose-500/5 p-6"
+        role="alert"
+      >
+        <p className="text-sm font-medium text-rose-300">Unexpected empty response</p>
+        <p className="mt-1 text-xs text-rose-500/80">
+          The transcript list finished loading but returned no payload. Retry or check Brain logs.
+        </p>
+        <Button
+          type="button"
+          variant="destructive"
+          size="sm"
+          className="mt-5 min-h-11 px-6"
+          onClick={() => retry()}
+        >
+          <RefreshCw className="mr-2 h-4 w-4" aria-hidden />
+          Retry
+        </Button>
       </div>
     );
   }
@@ -58,7 +74,10 @@ export function BrainTranscriptsList() {
       <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-10 text-center">
         <p className="text-sm font-medium text-zinc-300">No transcripts yet</p>
         <p className="mt-2 text-xs text-zinc-500">
-          Ingest Cursor sessions from Brain admin when ready — session backfill ships separately.
+          Nothing ingested for this Brain environment. From a dev machine with your Cursor{" "}
+          <span className="font-mono text-zinc-400">agent-transcripts</span> tree, run{" "}
+          <span className="font-mono text-zinc-400">pnpm run backfill:transcripts</span> (see
+          Operator panel above).
         </p>
       </div>
     );
