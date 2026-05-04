@@ -10,8 +10,10 @@ medallion: ops
 from __future__ import annotations
 
 import json
-from pathlib import Path
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 from app.config import settings
 
@@ -22,9 +24,9 @@ _GITHUB_REF = "main"
 
 
 def _repo_root() -> Path:
-    # apis/brain/app/services/this_file.py → parents[4] = monorepo root
-    # parents[0]=services, [1]=app, [2]=brain, [3]=apis, [4]=repo
-    return Path(__file__).resolve().parents[4]
+    from app.utils.paths import repo_root
+
+    return repo_root()
 
 
 def default_tracker_index_path() -> Path:

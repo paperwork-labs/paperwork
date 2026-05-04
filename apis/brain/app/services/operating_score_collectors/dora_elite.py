@@ -12,17 +12,19 @@ import math
 import os
 import subprocess
 from datetime import UTC, datetime, timedelta
-from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from urllib.parse import urlparse
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 _BOOTSTRAP = (75.0, False, "gh CLI unavailable; bootstrap estimate")
 
 
 def _brain_data_dir() -> Path:
-    here = Path(__file__).resolve()
-    brain_pkg = here.parents[3]
-    return brain_pkg / "data"
+    from app.utils.paths import brain_data_dir
+
+    return brain_data_dir()
 
 
 def _repo_slug() -> str | None:

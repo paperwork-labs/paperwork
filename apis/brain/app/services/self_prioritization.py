@@ -82,11 +82,9 @@ def _repo_root() -> Path:
     env = os.environ.get("REPO_ROOT")
     if env:
         return Path(env).resolve()
-    here = Path(__file__).resolve()
-    for parent in here.parents:
-        if (parent / "apis" / "brain").is_dir() and (parent / "apps" / "studio").is_dir():
-            return parent
-    return here.parents[4]
+    from app.utils.paths import repo_root
+
+    return repo_root()
 
 
 def candidates_file_path() -> Path:

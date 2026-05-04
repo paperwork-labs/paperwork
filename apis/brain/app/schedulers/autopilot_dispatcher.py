@@ -51,32 +51,26 @@ logger = logging.getLogger(__name__)
 JOB_ID = "brain_autopilot_dispatcher"
 
 # ------------------------------------------------------------------
-# Paths
+# Path helpers
 # ------------------------------------------------------------------
-
-_DISPATCH_QUEUE_REL = Path("apis") / "brain" / "data" / "dispatch_queue.json"
-_DISPATCH_LOG_REL = Path("apis") / "brain" / "data" / "agent_dispatch_log.jsonl"
-
-
-def _repo_root() -> Path:
-    env: str = os.environ.get("REPO_ROOT", "").strip()
-    if env:
-        return Path(env)
-    return Path(__file__).resolve().parents[4]
 
 
 def _dispatch_queue_path() -> Path:
     env: str = os.environ.get("BRAIN_DISPATCH_QUEUE_JSON", "").strip()
     if env:
         return Path(env)
-    return _repo_root() / _DISPATCH_QUEUE_REL
+    from app.utils.paths import brain_data_dir
+
+    return brain_data_dir() / "dispatch_queue.json"
 
 
 def _dispatch_log_path() -> Path:
     env: str = os.environ.get("BRAIN_DISPATCH_LOG_JSONL", "").strip()
     if env:
         return Path(env)
-    return _repo_root() / _DISPATCH_LOG_REL
+    from app.utils.paths import brain_data_dir
+
+    return brain_data_dir() / "agent_dispatch_log.jsonl"
 
 
 # ------------------------------------------------------------------

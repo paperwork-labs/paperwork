@@ -22,10 +22,9 @@ def objectives_file_path() -> Path:
     override = os.environ.get("BRAIN_OBJECTIVES_YAML")
     if override:
         return Path(override)
-    repo_root = os.environ.get("REPO_ROOT")
-    if repo_root:
-        return Path(repo_root) / "docs" / "strategy" / "OBJECTIVES.yaml"
-    return Path(__file__).resolve().parents[4] / "docs" / "strategy" / "OBJECTIVES.yaml"
+    from app.utils.paths import repo_root
+
+    return repo_root() / "docs" / "strategy" / "OBJECTIVES.yaml"
 
 
 def _read_text_shared(path: Path) -> str:

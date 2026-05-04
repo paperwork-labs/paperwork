@@ -11,10 +11,14 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
-from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 from app.schemas.conversation import ConversationCreate
 from app.services.conversations import create_conversation
+from app.utils.paths import brain_scripts_dir
 
 logger = logging.getLogger(__name__)
 
@@ -22,23 +26,8 @@ _JOB_LABEL = "clerk_dns_reconcile_check"
 
 
 def _resolve_script_path() -> Path | None:
-    env_root = (os.environ.get("REPO_ROOT") or "").strip()
-    if env_root:
-        p = Path(env_root) / "scripts" / "reconcile_clerk_dns.py"
-        if p.is_file():
-            return p
-    docker = Path("/app/scripts/reconcile_clerk_dns.py")
-    if docker.is_file():
-        return docker
-    here = Path(__file__).resolve()
-    # .../paperwork/apis/brain/app/services/clerk_dns_watch.py → repo root
-    try:
-        candidate = here.parents[4] / "scripts" / "reconcile_clerk_dns.py"
-    except IndexError:
-        return None
-    if candidate.is_file():
-        return candidate
-    return None
+    candidate = brain_scripts_dir() / "reconcile_clerk_dns.py"
+    return candidate if candidate.is_file() else None
 
 
 async def run_clerk_dns_check_only_tick() -> None:

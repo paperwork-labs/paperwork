@@ -32,9 +32,9 @@ _CLASSNAME_STR_RE = re.compile(
 
 
 def _brain_data_dir() -> Path:
-    here = Path(__file__).resolve()
-    brain_pkg = here.parents[3]
-    return brain_pkg / "data"
+    from app.utils.paths import brain_data_dir
+
+    return brain_data_dir()
 
 
 def _axe_runs_path() -> Path:
@@ -49,11 +49,9 @@ def _repo_root() -> Path | None:
     if env:
         p = Path(env)
         return p if p.is_dir() else None
-    here = Path(__file__).resolve()
-    for anc in here.parents:
-        if (anc / "apps").is_dir() and (anc / "docs").is_dir():
-            return anc
-    return None
+    from app.utils.paths import repo_root
+
+    return repo_root()
 
 
 def _run_sort_key(run: dict[str, Any]) -> str:

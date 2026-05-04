@@ -16,15 +16,14 @@ from functools import lru_cache
 from pathlib import Path
 
 from app.schemas.decommissions import DecommissionEntry, DecommissionsFile
+from app.utils.paths import brain_data_dir
 
 logger = logging.getLogger(__name__)
-
-_DEFAULT_DATA_PATH = Path(__file__).resolve().parents[3] / "data" / "decommissions.json"
 
 
 def _data_path() -> Path:
     env = os.environ.get("DECOMMISSIONS_DATA_PATH", "").strip()
-    return Path(env) if env else _DEFAULT_DATA_PATH
+    return Path(env) if env else brain_data_dir() / "decommissions.json"
 
 
 @lru_cache(maxsize=1)

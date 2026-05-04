@@ -58,14 +58,15 @@ _BII_RETRO_SCALE = 2.5  # 1 POS point → 2.5 normalized points (±20 → 0..100
 
 
 def _repo_root() -> Path:
-    override = os.environ.get("REPO_ROOT", "").strip()
-    if override:
-        return Path(override)
-    return Path(__file__).resolve().parents[4]
+    from app.utils.paths import repo_root
+
+    return repo_root()
 
 
 def _brain_data_dir() -> Path:
-    return Path(__file__).resolve().parents[2] / "data"
+    from app.utils.paths import brain_data_dir
+
+    return brain_data_dir()
 
 
 def weekly_retros_file_path() -> Path:

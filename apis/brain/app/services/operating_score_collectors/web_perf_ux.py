@@ -22,9 +22,9 @@ _BOOTSTRAP = (
 
 
 def _brain_data_dir() -> Path:
-    here = Path(__file__).resolve()
-    brain_root = here.parents[3]
-    return brain_root / "data"
+    from app.utils.paths import brain_data_dir
+
+    return brain_data_dir()
 
 
 def _lighthouse_runs_path() -> Path:

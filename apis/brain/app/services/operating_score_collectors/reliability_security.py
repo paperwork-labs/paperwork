@@ -32,18 +32,18 @@ def _repo_root() -> Path:
     env = os.environ.get("BRAIN_REPO_ROOT", "").strip()
     if env:
         return Path(env)
-    here = Path(__file__).resolve()
-    for anc in here.parents:
-        if (anc / "apps").is_dir() and (anc / "docs").is_dir():
-            return anc
-    return here.parents[5]
+    from app.utils.paths import repo_root
+
+    return repo_root()
 
 
 def _brain_data_dir() -> Path:
     env = os.environ.get("BRAIN_RELIABILITY_DATA_DIR", "").strip()
     if env:
         return Path(env)
-    return Path(__file__).resolve().parents[3] / "data"
+    from app.utils.paths import brain_data_dir
+
+    return brain_data_dir()
 
 
 def _parse_rfc3339(s: str) -> datetime | None:
