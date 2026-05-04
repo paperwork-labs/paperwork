@@ -177,19 +177,19 @@ docs:
     tags: [infra, runbook]
     owners: [infra-ops]
     category: runbooks
-  - slug: brain-secrets-intelligence
-    path: docs/infra/BRAIN_SECRETS_INTELLIGENCE.md
-    title: Brain secrets operational intelligence
-    summary: "Registry (metadata), episodes, and schedulers for drift audit, rotation windows, and health — Studio overlay and agent intake."
-    tags: [infra, runbook, secrets]
-    owners: [infra-ops]
-    category: runbooks
   - slug: brain-conversations-backfill
     path: docs/runbooks/BRAIN_CONVERSATIONS_BACKFILL.md
     title: Brain Conversations — backfill JSON+SQLite to Postgres (T1.0d)
     summary: "T1.0d migration runbook: how to migrate the legacy JSON-on-disk + SQLite FTS conversations store to Postgres tsvector. Idempotent dry-run + apply phases, rollback steps, and verification queries."
     tags: [brain, conversations, postgres, migration, runbook]
     owners: [brain]
+    category: runbooks
+  - slug: brain-secrets-intelligence
+    path: docs/infra/BRAIN_SECRETS_INTELLIGENCE.md
+    title: Brain secrets operational intelligence
+    summary: "Registry (metadata), episodes, and schedulers for drift audit, rotation windows, and health — Studio overlay and agent intake."
+    tags: [infra, runbook, secrets]
+    owners: [infra-ops]
     category: runbooks
   - slug: brain-weekly-retro
     path: docs/runbooks/brain-weekly-retro.md
