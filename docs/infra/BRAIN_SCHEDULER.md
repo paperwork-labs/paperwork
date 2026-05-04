@@ -168,7 +168,7 @@ Structured stdout: one JSON object per line per check (no PII).
 
 ### Automation
 
-GitHub Actions workflow **`.github/workflows/brain-post-deploy-smoke.yml`** runs on `repository_dispatch` type **`brain-deploy-completed`** (wire Render → GitHub separately) and on **`workflow_dispatch`**. It does **not** run on pull requests and does not gate merges.
+GitHub Actions workflow **`.github/workflows/brain-deploy-smoke.yaml`** runs on `repository_dispatch` type **`brain-deploy-completed`** (wire deploy hooks separately) and on **`workflow_dispatch`**. It does **not** run on pull requests and does not gate merges. Operational meaning of green: [Brain deploy stability gate](../runbooks/BRAIN_DEPLOY_STABILITY_GATE.md).
 
 ## Related
 

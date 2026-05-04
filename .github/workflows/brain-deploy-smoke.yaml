@@ -1,0 +1,68 @@
+name: Brain deploy smoke gate
+
+# T3.7 — Fail-closed post-deploy verification for Brain API. Any failing check fails the workflow.
+#
+# Secrets (configure in repo Settings → Secrets; never commit values):
+#   BRAIN_API_URL      — HTTPS origin of the deployed Brain API (no path). Consumed by
+#                         `apis/brain/scripts/post_deploy_smoke.py --ci` as `BRAIN_API_URL`.
+#   BRAIN_ADMIN_TOKEN — Optional; enables `--report-conversation` (X-Brain-Secret) on failure.
+#
+# After a successful deploy of `brain-api`, trigger `repository_dispatch` with event type
+# `brain-deploy-completed` (wire from your host's deploy hooks). Manual verification: `workflow_dispatch`.
+#
+"on":
+  repository_dispatch:
+    types: [brain-deploy-completed]
+  workflow_dispatch:
+
+concurrency:
+  group: brain-deploy-smoke-${{ github.repository }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  smoke-unit-tests:
+    name: Pytest smoke (test_*smoke*)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: apis/brain/requirements.txt
+
+      - name: Install Brain API dependencies
+        run: pip install -r apis/brain/requirements.txt
+
+      - name: Run smoke-focused pytest
+        run: python -m pytest apis/brain/tests/test_*smoke* -v --tb=short
+
+  live-smoke:
+    name: Live API smoke (post_deploy_smoke.py --ci)
+    needs: [smoke-unit-tests]
+    # DB probe imports app database settings; self-hosted profile matches existing Brain CI
+    # (direct/async DSN). Do not move to ubuntu-latest without a reachable DATABASE_URL on the runner.
+    runs-on: [self-hosted, hetzner]
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: apis/brain/requirements.txt
+
+      - name: Install Brain API dependencies
+        run: pip install -r apis/brain/requirements.txt
+
+      - name: Run post-deploy smoke
+        env:
+          BRAIN_API_URL: ${{ secrets.BRAIN_API_URL }}
+          BRAIN_ADMIN_TOKEN: ${{ secrets.BRAIN_ADMIN_TOKEN }}
+        run: python apis/brain/scripts/post_deploy_smoke.py --ci --report-conversation
