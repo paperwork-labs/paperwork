@@ -16,6 +16,7 @@ import {
   Bot,
   ClipboardCheck,
   Orbit,
+  ScrollText,
 } from "lucide-react";
 
 export type NavItem = {
@@ -48,6 +49,11 @@ export function buildNavGroups(
           label: "Conversations",
           icon: MessageSquare,
           pendingBadge: founderPending,
+        },
+        {
+          href: "/admin/transcripts",
+          label: "Transcripts",
+          icon: ScrollText,
         },
         { href: "/admin/autopilot", label: "Autopilot", icon: Bot },
         {
