@@ -5,6 +5,13 @@ Enables Postgres full-text search over message bodies (T1.0d Wave 0).
 ``message_metadata`` stores ThreadMessage fields not present in the 012 schema
 (author, attachments, reactions, parent_message_id).
 
+Self-heal: migration 012's ``CREATE TABLE IF NOT EXISTS`` was historically a no-op
+on the Render ephemeral-disk era of Brain. ``alembic_version`` got carried forward
+to 014 without the tables actually existing in the canonical Neon Postgres. We
+therefore re-assert the 012 schema idempotently at the top of 015 so the deploy
+self-heals on first apply (no manual ``psql`` step). The IF NOT EXISTS clauses
+make this safe on databases where 012 did create the tables.
+
 Revision ID: 015
 Revises: 014
 """
@@ -18,6 +25,36 @@ depends_on = None
 
 
 def upgrade() -> None:
+    # ----------------------------------------------- self-heal 012 tables (idempotent)
+    op.execute(
+        """
+        CREATE TABLE IF NOT EXISTS conversations (
+          id UUID PRIMARY KEY,
+          title TEXT NOT NULL,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+          updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+          metadata JSONB NOT NULL DEFAULT '{}'::jsonb
+        )
+        """
+    )
+    op.execute(
+        """
+        CREATE TABLE IF NOT EXISTS conversation_messages (
+          id UUID PRIMARY KEY,
+          conversation_id UUID NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+          role VARCHAR(20) NOT NULL CHECK (role IN ('user','assistant','persona')),
+          content TEXT NOT NULL,
+          persona_slug VARCHAR(100),
+          model_used VARCHAR(100),
+          created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+        )
+        """
+    )
+    op.execute(
+        "CREATE INDEX IF NOT EXISTS conversation_messages_conversation_id_idx "
+        "ON conversation_messages (conversation_id)"
+    )
+
     # ------------------------------------------------------------------ columns
     op.execute("ALTER TABLE conversation_messages ADD COLUMN IF NOT EXISTS content_tsv TSVECTOR")
     op.execute(
