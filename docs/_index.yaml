@@ -647,6 +647,13 @@ docs:
     tags: [product, spec]
     owners: [engineering, ux]
     category: reference
+  - slug: registry
+    path: docs/infra/REGISTRY.md
+    title: Production surface registry (Q2 Wave 1 — T3.2)
+    summary: One row per production surface — verified from repo paths only; unknowns explicit.
+    tags: [infra, reference]
+    owners: [infra-ops]
+    category: reference
   - slug: provider-token-scopes-2026-q2
     path: docs/audits/PROVIDER_TOKEN_SCOPES_2026-Q2.md
     title: Provider API Token Scope Audit — Q2 2026
